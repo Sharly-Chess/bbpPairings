@@ -1,104 +1,88 @@
 optional_cxxflags = \
 	-std=c++20 \
 	-ftabstop=2 \
-	-Werror \
+	$(if $(filter-out mac,$(target_os)),-Werror) \
 	-Wfatal-errors \
 	-pedantic \
 	-pedantic-errors \
-	-Wabi=0 \
-	-Waligned-new=all \
 	-Wall \
-	-Walloc-zero \
 	-Walloca \
-	-Warith-conversion \
-	-Warray-bounds=2 \
-	-Warray-parameter=2 \
-	-Wattribute-alias=2 \
-	-Wcast-align=strict \
 	-Wcast-qual \
-	-Wcatch-value=3 \
-	-Wconditionally-supported \
-	-Wconversion \
-	-Wctad-maybe-unsupported \
 	-Wctor-dtor-privacy \
-	-Wdate-time \
 	-Wdisabled-optimization \
 	-Wdouble-promotion \
-	-Wduplicated-branches \
-	-Wduplicated-cond \
-	-Weffc++ \
-	-Wenum-conversion \
 	-Wextra \
 	-Wextra-semi \
-	-Wfloat-equal \
 	-Wformat=2 \
-	-Wformat-overflow=2 \
-	-Wformat-signedness \
-	-Wformat-truncation=2 \
-	-Wimplicit-fallthrough=3 \
-	-Winline \
-	-Winvalid-imported-macros \
 	-Winvalid-pch \
-	-Wlogical-op \
-	-Wlong-long \
 	-Wmismatched-tags \
 	-Wmissing-braces \
+	-Wmissing-declarations \
 	-Wmissing-include-dirs \
-	-Wmultiple-inheritance \
-	-Wnormalized=nfkc \
 	-Wnull-dereference \
-	-Wold-style-cast \
 	-Woverloaded-virtual \
 	-Wpacked \
-	-Wpadded \
-	-Wplacement-new=2 \
 	-Wpointer-arith \
 	-Wredundant-decls \
-	-Wredundant-tags \
-	-Wshadow \
-	-Wsign-conversion \
 	-Wsign-promo \
-	-Wstrict-null-sentinel \
-	-Wstrict-overflow=5 \
-	-Wstringop-overflow=4 \
-	-Wsuggest-attribute=cold \
-	-Wsuggest-attribute=const \
-	-Wsuggest-attribute=format \
-	-Wsuggest-attribute=malloc \
-	-Wsuggest-attribute=noreturn \
-	-Wsuggest-attribute=pure \
-	-Wsuggest-final-methods \
-	-Wsuggest-final-types \
+	-Wstrict-overflow=4 \
 	-Wsuggest-override \
 	-Wswitch-default \
-	-Wswitch-enum \
-	-Wsync-nand \
-	-Wtrampolines \
 	-Wundef \
-	-Wunsafe-loop-optimizations \
+	-Wunknown-pragmas \
 	-Wunused-macros \
-	-Wuseless-cast \
-	-Wvector-operation-performance \
-	-Wvirtual-inheritance \
 	-Wvla \
-	-Wzero-as-null-pointer-constant
-# Omitted because they were being triggered:
-# -Wsystem-headers
-# -Wabi-tag
-# -Waggregate-return
-# -Wmissing-declarations
-# -Wnamespaces
-# -Wtemplates
-# Not recognized by compiler:
-# -Wbidi-chars=any
-# -Winterference-size
-# -Wopenacc-parallelism
+	-Wzero-as-null-pointer-constant \
+	-Wno-free-nonheap-object \
+	-Wno-overflow \
+	-Wno-sign-compare
 
 ifeq ($(shell uname -o),Msys)
 	optional_cxxflags += -static
 endif
 
-CXX=g++
+# Use clang or clang++ for macOS
+ifeq ($(shell uname),Darwin)
+	CXX = clang++
+else
+	CXX = g++
+endif
+
+ifeq ($(CXX),g++)
+	optional_cxxflags += \
+		-Wabi=0 \
+		-Waligned-new=all \
+		-Warray-bounds=2 \
+		-Wattribute-alias=2 \
+		-Wcast-align=strict \
+		-Wcatch-value=3 \
+		-Wconditionally-supported \
+		-Wduplicated-cond \
+		-Wformat-overflow=2 \
+		-Wformat-signedness \
+		-Wformat-truncation=2 \
+		-Wimplicit-fallthrough=3 \
+		-Wlogical-op \
+		-Wmultiple-inheritance \
+		-Wnormalized=nfkc \
+		-Wplacement-new=2 \
+		-Wredundant-tags \
+		-Wshadow=local \
+		-Wstrict-null-sentinel \
+		-Wstringop-overflow=4 \
+		-Wsuggest-attribute=cold \
+		-Wsuggest-attribute=format \
+		-Wsuggest-attribute=malloc \
+		-Wsuggest-attribute=noreturn \
+		-Wsuggest-final-methods \
+		-Wsuggest-final-types \
+		-Wsync-nand \
+		-Wtrampolines \
+		-Wunsafe-loop-optimizations \
+		-Wvector-operation-performance \
+		-Wvirtual-inheritance \
+		-Wno-maybe-uninitialized
+endif
 
 CXXFLAGS = $(optional_cxxflags)
 
