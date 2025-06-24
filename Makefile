@@ -28,12 +28,19 @@ debug = no
 profile = no
 optimize = yes
 static = no
-COMP = gcc
+
+# Use clang or clang++ for macOS
+ifeq ($(shell uname),Darwin)
+	COMP = clang
+else
+	COMP = gcc
+	arch_flags =
+endif
 
 optional_cxxflags = \
 	-std=c++20 \
 	-ftabstop=2 \
-	-Werror \
+	$(if $(filter-out mac,$(target_os)),-Werror) \
 	-Wfatal-errors \
 	-pedantic \
 	-pedantic-errors \
@@ -112,12 +119,19 @@ ifeq ($(COMP),gcc)
 		target_os = linux
 	endif
 endif
+
 ifeq ($(COMP),clang)
-	target = $(shell clang++ -v 2>&1 | sed -n -e 's/Target: [^-]*-\(.*\)/\1/p')
+	target := $(shell clang++ -v 2>&1 | sed -n -e 's/Target: [^-]*-\(.*\)/\1/p')
 	ifeq ($(target),w64-windows-gnu)
 		target_os = windows
+		arch_flags =
 	else ifeq ($(target),pc-linux-gnu)
 		target_os = linux
+		arch_flags =
+	else ifneq (,$(findstring apple-darwin,$(target)))
+		target_os := mac
+		license_id = linux
+		arch_flags = -arch x86_64 -arch arm64
 	endif
 endif
 
@@ -326,7 +340,7 @@ ifeq ($(COMP),clang)
 		-Wover-aligned \
 		-Woverriding-method-mismatch \
 		-Wpedantic-core-features \
-		-Wpoison-system-directories \
+		$(if $(filter-out mac,$(target_os)),-Wpoison-system-directories) \
 		-Wpragmas \
 		-Wpre-c2x-compat \
 		-Wpre-openmp-51-compat \
@@ -390,9 +404,9 @@ ifeq ($(COMP),clang)
 	# -Wweak-vtables
 endif
 
-CXXFLAGS = $(optional_cxxflags)
+CXXFLAGS = $(optional_cxxflags) $(arch_flags)
 
-LDFLAGS = $(optional_ldflags) $(CXXFLAGS)
+LDFLAGS = $(optional_ldflags) $(arch_flags) $(CXXFLAGS)
 
 .DELETE_ON_ERROR:
 

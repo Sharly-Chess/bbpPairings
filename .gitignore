@@ -4,3 +4,5 @@
 bbpPairings*
 test/test-includes.h
 test/tests/*.output
+
+.DS_Store
