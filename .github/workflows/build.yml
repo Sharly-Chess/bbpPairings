@@ -1,0 +1,161 @@
+name: Build and Release
+
+permissions:
+  contents: write
+  packages: write
+
+on:
+  workflow_dispatch:  # Allow manual triggering
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags
+      - '*'   # Trigger on any tag
+  release:
+    types: [ published ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: Linux
+            artifact_name: bbpPairings-linux
+            make_target: bbpPairings.exe
+            compiler: gcc
+            
+          - os: windows-latest
+            name: Windows
+            artifact_name: bbpPairings-windows.exe
+            make_target: bbpPairings.exe
+            compiler: gcc
+            
+          - os: macos-latest
+            name: macOS
+            artifact_name: bbpPairings-macos
+            make_target: bbpPairings.exe
+            compiler: clang
+
+    runs-on: ${{ matrix.os }}
+    name: Build on ${{ matrix.name }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for git describe
+
+    - name: Setup older MinGW on Windows
+      if: matrix.os == 'windows-latest'
+      shell: powershell
+      run: |
+        # Try installing an older version of MinGW that doesn't have the deprecation issue
+        choco install mingw --version=8.1.0 --force
+        # Add to PATH
+        $env:PATH = "C:\tools\mingw64\bin;$env:PATH"
+        echo "C:\tools\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        # Install make
+        choco install make
+
+    - name: Install dependencies on Ubuntu
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential
+
+    - name: Install dependencies on macOS
+      if: matrix.os == 'macos-latest'
+      run: |
+        # Xcode command line tools should already be available
+        echo "Using system clang"
+
+    - name: Build on Windows
+      if: matrix.os == 'windows-latest'
+      shell: cmd
+      run: |
+        set COMP=${{ matrix.compiler }}
+        set optimize=no
+        make ${{ matrix.make_target }}
+        copy bbpPairings.exe ${{ matrix.artifact_name }}
+
+    - name: Build on Unix (Linux/macOS)
+      if: matrix.os != 'windows-latest'
+      run: |
+        export COMP=${{ matrix.compiler }}
+        make ${{ matrix.make_target }}
+        cp bbpPairings.exe ${{ matrix.artifact_name }}
+
+    - name: Run tests on Windows
+      if: matrix.os == 'windows-latest'
+      shell: cmd
+      run: |
+        set optimize=no
+        make test
+
+    - name: Run tests on Unix (Linux/macOS)
+      if: matrix.os != 'windows-latest'
+      run: |
+        make test
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: ${{ matrix.artifact_name }}
+
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    name: Create Release
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Create Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create ${{ github.ref_name }} \
+          --title "Release ${{ github.ref_name }}" \
+          --notes "## bbpPairings ${{ github.ref_name }}
+        
+        Cross-platform builds for Mac, Windows, and Linux.
+        
+        ### Downloads
+        - **Linux**: bbpPairings-Linux.zip
+        - **macOS**: bbpPairings-macOS.zip  
+        - **Windows**: bbpPairings-Windows.zip"
+
+  upload-release-assets:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build, create-release]
+    runs-on: ubuntu-latest
+    name: Upload Release Assets
+    strategy:
+      matrix:
+        include:
+          - artifact_name: bbpPairings-linux
+            asset_name: bbpPairings-Linux.zip
+          - artifact_name: bbpPairings-windows.exe
+            asset_name: bbpPairings-Windows.zip
+          - artifact_name: bbpPairings-macos
+            asset_name: bbpPairings-macOS.zip
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: ./
+        
+    - name: Create zip package
+      run: |
+        zip ${{ matrix.asset_name }} ${{ matrix.artifact_name }}
+        
+    - name: Upload Release Asset
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release upload ${{ github.ref_name }} ${{ matrix.asset_name }}
