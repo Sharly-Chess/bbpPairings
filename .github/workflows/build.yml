@@ -152,7 +152,7 @@ jobs:
         
     - name: Create zip package
       run: |
-        zip ${{ matrix.asset_name }} ${{ matrix.artifact_name }}
+        zip ${{ matrix.asset_name }} ${{ matrix.artifact_name }} LICENSE.txt Apache-2.0.txt README.txt
         
     - name: Upload Release Asset
       env:
