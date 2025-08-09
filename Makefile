@@ -108,15 +108,24 @@ optional_cxxflags += -DVERSION_INFO=$(version_info)
 ifeq ($(COMP),gcc)
 	comp_version := \
 		$(shell g++ -v 2>&1 | sed -n 's/^gcc version \([0-9]*\.[0-9]*\.[0-9]*\).*/\1/p')
+	target_full = $(shell g++ -v 2>&1 | sed -n -e 's/Target: \(.*\)/\1/p')
 	target = $(shell g++ -v 2>&1 | sed -n -e 's/Target: [^-]*-\(.*\)/\1/p')
 	prefix = $(shell g++ -v 2>&1 | sed -n -e 's/.*--prefix=\([^ ]*\).*/\1/p')
 	thread_model = $(shell g++ -v 2>&1 | sed -n -e 's/Thread model: \(.*\)/\1/p')
-	ifeq ($(target),w64-mingw32)
+	# Check for Windows/MinGW target
+	ifneq (,$(findstring mingw,$(target_full)))
+		license_id = w64-mingw32
+		target_os = windows
+	else ifeq ($(target),w64-mingw32)
 		license_id = w64-mingw32
 		target_os = windows
 	else ifeq ($(target),pc-linux-gnu)
 		license_id = linux
 		target_os = linux
+	else
+		# Default fallback - assume Windows if we can't detect
+		target_os = windows
+		license_id = w64-mingw32
 	endif
 endif
 
@@ -138,6 +147,8 @@ endif
 ifeq ($(static),yes)
 	ifeq ($(target_os),linux)
 		optional_ldflags += -static-libstdc++ -static-libgcc
+	else ifeq ($(target_os),windows)
+		optional_ldflags += -static
 	else
 		optional_ldflags += -static
 	endif
