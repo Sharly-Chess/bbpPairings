@@ -260,7 +260,8 @@ ifeq ($(COMP),gcc)
 		-Wunsafe-loop-optimizations \
 		-Wvector-operation-performance \
 		-Wvirtual-inheritance \
-		-Wno-maybe-uninitialized
+		-Wno-maybe-uninitialized \
+		-Wno-deprecated-declarations
 	# Omitted because they were being triggered:
 	# -Wabi-tag
 	# -Warith-conversion
