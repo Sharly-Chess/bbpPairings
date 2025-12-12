@@ -106,12 +106,14 @@ endif
 optional_cxxflags += -DVERSION_INFO=$(version_info)
 
 ifeq ($(COMP),gcc)
+	# Use CXX if set (for cross-compilation), otherwise default to g++
+	detect_cxx = $(if $(CXX),$(CXX),g++)
 	comp_version := \
-		$(shell g++ -v 2>&1 | sed -n 's/^gcc version \([0-9]*\.[0-9]*\.[0-9]*\).*/\1/p')
-	target_full = $(shell g++ -v 2>&1 | sed -n -e 's/Target: \(.*\)/\1/p')
-	target = $(shell g++ -v 2>&1 | sed -n -e 's/Target: [^-]*-\(.*\)/\1/p')
-	prefix = $(shell g++ -v 2>&1 | sed -n -e 's/.*--prefix=\([^ ]*\).*/\1/p')
-	thread_model = $(shell g++ -v 2>&1 | sed -n -e 's/Thread model: \(.*\)/\1/p')
+		$(shell $(detect_cxx) -v 2>&1 | sed -n 's/^gcc version \([0-9]*\.[0-9]*\.[0-9]*\).*/\1/p')
+	target_full = $(shell $(detect_cxx) -v 2>&1 | sed -n -e 's/Target: \(.*\)/\1/p')
+	target = $(shell $(detect_cxx) -v 2>&1 | sed -n -e 's/Target: [^-]*-\(.*\)/\1/p')
+	prefix = $(shell $(detect_cxx) -v 2>&1 | sed -n -e 's/.*--prefix=\([^ ]*\).*/\1/p')
+	thread_model = $(shell $(detect_cxx) -v 2>&1 | sed -n -e 's/Thread model: \(.*\)/\1/p')
 	# Check for Windows/MinGW target
 	ifneq (,$(findstring mingw,$(target_full)))
 		license_id = w64-mingw32
@@ -119,6 +121,9 @@ ifeq ($(COMP),gcc)
 	else ifeq ($(target),w64-mingw32)
 		license_id = w64-mingw32
 		target_os = windows
+	else ifneq (,$(findstring linux-gnu,$(target_full)))
+		license_id = linux
+		target_os = linux
 	else ifeq ($(target),pc-linux-gnu)
 		license_id = linux
 		target_os = linux
@@ -130,9 +135,13 @@ ifeq ($(COMP),gcc)
 endif
 
 ifeq ($(COMP),clang)
+	target_full := $(shell clang++ -v 2>&1 | sed -n -e 's/Target: \(.*\)/\1/p')
 	target := $(shell clang++ -v 2>&1 | sed -n -e 's/Target: [^-]*-\(.*\)/\1/p')
 	ifeq ($(target),w64-windows-gnu)
 		target_os = windows
+		arch_flags =
+	else ifneq (,$(findstring linux-gnu,$(target_full)))
+		target_os = linux
 		arch_flags =
 	else ifeq ($(target),pc-linux-gnu)
 		target_os = linux
