@@ -1240,6 +1240,7 @@ namespace fileformats
                 const auto tournamentType = line.substr(4);
                 if (
                   tournamentType == U"FIDE_DUTCH_2025"
+                    || tournamentType == U"FIDE_DUTCH_2026"
                     || tournamentType == U"FIDE_DUTCH")
                 {
                   result.swissSystem = swisssystems::DUTCH;
@@ -1247,6 +1248,7 @@ namespace fileformats
                 }
                 else if (
                   tournamentType == U"FIDE_DUTCH_2025_BAKU"
+                    || tournamentType == U"FIDE_DUTCH_2026_BAKU"
                     || tournamentType == U"FIDE_DUTCH_BAKU")
                 {
                   result.swissSystem = swisssystems::DUTCH;
