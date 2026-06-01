@@ -33,7 +33,11 @@ namespace fileformats
     };
 
     tournament::Tournament
-      readFile(std::istream &, bool, FileData *fileData = nullptr);
+      readFile(
+        std::istream &,
+        bool,
+        FileData *fileData = nullptr,
+        bool checkScores = true);
 
     /**
      * Write the tournament name to the output stream, including the provided

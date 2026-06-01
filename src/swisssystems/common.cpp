@@ -18,6 +18,7 @@
 #include "burstein.h"
 #include "common.h"
 #include "dutch.h"
+#include "teampairing.h"
 
 namespace swisssystems
 {
@@ -396,6 +397,9 @@ namespace swisssystems
 #ifndef OMIT_BURSTEIN
   constexpr burstein::BursteinInfo bursteinInfo{ };
 #endif
+#ifndef OMIT_TEAM
+  constexpr teampairing::TeamInfo teamInfo{ };
+#endif
 
   /**
    * Retrieve the Info object for the specified SwissSystem.
@@ -411,6 +415,10 @@ namespace swisssystems
 #ifndef OMIT_BURSTEIN
     case BURSTEIN:
       return bursteinInfo;
+#endif
+#ifndef OMIT_TEAM
+    case TEAM:
+      return teamInfo;
 #endif
     default:
       throw std::logic_error("");

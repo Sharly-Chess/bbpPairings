@@ -42,8 +42,36 @@ namespace swisssystems
 #ifndef OMIT_BURSTEIN
     BURSTEIN,
 #endif
+#ifndef OMIT_TEAM
+    TEAM,
+#endif
     NONE
   };
+
+#ifndef OMIT_TEAM
+  /**
+   * Team-pairing colour-preference model (FIDE C.04.6 §1.7), selected by the
+   * 192 tournament type (see docs/team-pairing.md §7).
+   */
+  enum class ColourType { NONE, A, B };
+
+  /** Whether a team's primary/secondary score is match points or game points. */
+  enum class ScoreChoice { MATCH_POINTS, GAME_POINTS };
+
+  /**
+   * The team-pairing configuration derived from the 192 code. The pairing
+   * engine always treats Player::scoreWithoutAcceleration as the primary score
+   * and Player::secondaryScore as the secondary score; primaryScore here only
+   * records which is which for the reader.
+   */
+  struct TeamConfig
+  {
+    ColourType colourType = ColourType::A;
+    ScoreChoice primaryScore = ScoreChoice::MATCH_POINTS;
+    ScoreChoice secondaryForColour = ScoreChoice::GAME_POINTS;
+    bool useSecondaryForColour = true;
+  };
+#endif
 }
 
 namespace tournament
@@ -179,6 +207,11 @@ namespace tournament
     round_index playedGames{ };
 
     points scoreWithoutAcceleration;
+    /**
+     * The secondary score, used only by the team-pairing system for colour
+     * allocation (C.04.6 §4.2.2). Zero for individual systems.
+     */
+    points secondaryScore{ };
 
     Color colorPreference = COLOR_NONE;
     Color repeatedColor = COLOR_NONE;
@@ -281,6 +314,31 @@ namespace tournament
   };
 
   /**
+   * An abnormal points assignment (TRF-2026 record 299). It overrides or adjusts
+   * the points a team/player receives for a particular kind of result.
+   */
+  struct AbnormalAssignment
+  {
+    /**
+     * The abnormal-assignment type: U'W'/U'D'/U'L' (over-the-board result),
+     * U'F'/U'H'/U'Z' (full/half/zero-point bye), U'+'/U'-' (forfeit win/loss),
+     * or U' ' for a blank type (free penalty/bonus points added to the score).
+     */
+    char32_t type;
+    bool hasMatchPoints;
+    bool hasOtherPoints;
+    /** Tenths, signed (may be negative). matchPoints applies to teams only. */
+    long matchPoints;
+    /** Tenths, signed. Game points for teams; standings points for individuals. */
+    long otherPoints;
+    /** When false, applies to the given (zero-based) round; otherwise all rounds. */
+    bool allRounds;
+    round_index round;
+    /** Zero-based target team/player indices; empty means all. */
+    std::vector<player_index> targets;
+  };
+
+  /**
    * A struct representing the details and history of a tournament.
    */
   struct Tournament
@@ -304,8 +362,13 @@ namespace tournament
     points pointsForPairingAllocatedBye{ 10u };
     Color initialColor = COLOR_NONE;
     swisssystems::SwissSystem swissSystem = swisssystems::NONE;
+#ifndef OMIT_TEAM
+    swisssystems::TeamConfig teamConfig{ };
+#endif
     bool defaultAcceleration = true;
     std::deque<ForbiddenPairsEntry> forbiddenPairs;
+    /** Abnormal points assignments from TRF-2026 record 299. */
+    std::vector<AbnormalAssignment> abnormalAssignments;
 
     points getPoints(const Player &player, const Match &match) const &
     {

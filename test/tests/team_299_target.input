@@ -1,0 +1,16 @@
+012 299 forfeit-loss override targeting one team
+152 W
+142 3
+192 FIDE_TEAM_TYPEA_MP_GP
+362 TW  2.0   TD  1.0   TL  0.0
+299 -   1.0               4
+001    1      T1                                2500                             1.0    1     2 - +
+001    2      T2                                2500                             0.0    2     1 - -
+001    3      T3                                2500                             1.0    3     4 - +
+001    4      T4                                2500                             0.0    4     3 - -
+001    5      T5                                2500                             1.0    5  0000 - U
+310 1   Team1                                                               1
+310 2   Team2                                                               2
+310 3   Team3                                                               3
+310 4   Team4                                                               4
+310 5   Team5                                                               5

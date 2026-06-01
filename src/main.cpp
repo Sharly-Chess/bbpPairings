@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "fileformats/generatorconfiguration.h"
+#include "fileformats/teamtrf.h"
 #include "fileformats/trf.h"
 #include "fileformats/types.h"
 #include "swisssystems/common.h"
@@ -168,6 +169,9 @@ int main(const int argc, char**const argv)
 #endif
 #ifndef OMIT_BURSTEIN
         : swissSystemString == "--burstein" ? swisssystems::BURSTEIN
+#endif
+#ifndef OMIT_TEAM
+        : swissSystemString == "--team" ? swisssystems::TEAM
 #endif
         : swisssystems::NONE;
     int processedArgCount = 2 + printInfo;
@@ -344,7 +348,16 @@ int main(const int argc, char**const argv)
         tournament::Tournament tournament;
         try
         {
-          tournament = fileformats::trf::readFile(inputStream, false);
+#ifndef OMIT_TEAM
+          if (swissSystem == swisssystems::TEAM)
+          {
+            tournament = fileformats::teamtrf::readFile(inputStream, false);
+          }
+          else
+#endif
+          {
+            tournament = fileformats::trf::readFile(inputStream, false);
+          }
         }
         catch (const fileformats::FileFormatException &exception)
         {
@@ -449,7 +462,16 @@ int main(const int argc, char**const argv)
         tournament::Tournament tournament;
         try
         {
-          tournament = fileformats::trf::readFile(inputStream, true);
+#ifndef OMIT_TEAM
+          if (swissSystem == swisssystems::TEAM)
+          {
+            tournament = fileformats::teamtrf::readFile(inputStream, true);
+          }
+          else
+#endif
+          {
+            tournament = fileformats::trf::readFile(inputStream, true);
+          }
         }
         catch (const fileformats::FileFormatException &exception)
         {

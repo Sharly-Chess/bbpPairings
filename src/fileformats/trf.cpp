@@ -17,6 +17,7 @@
 #include <utility/tokenizer.h>
 #include <utility/uintstringconversion.h>
 
+#include "abnormalassignment.h"
 #include "trf.h"
 #include "types.h"
 
@@ -198,6 +199,10 @@ namespace fileformats
           bool gameWasPlayed = true;
           const std::u32string opponentString = line.substr(startIndex, 4);
           tournament::player_index opponent = id;
+          // TRF-2026: an explicit "0000" opponent can, in team competitions,
+          // denote a forfeit win/loss against an undefined opponent and may
+          // carry a scheduled colour (unlike a plain bye).
+          bool undefinedOpponent = false;
           if (opponentString != U"    ")
           {
             if (opponentString != U"0000")
@@ -207,6 +212,10 @@ namespace fileformats
               {
                 throw InvalidLineException();
               }
+            }
+            else
+            {
+              undefinedOpponent = true;
             }
             skip = false;
           }
@@ -237,7 +246,8 @@ namespace fileformats
             throw InvalidLineException();
           }
 
-          if (opponent == id && color != tournament::COLOR_NONE)
+          if (opponent == id && color != tournament::COLOR_NONE
+                && !undefinedOpponent)
           {
             throw InvalidLineException();
           }
@@ -605,8 +615,10 @@ namespace fileformats
           {
             tournament.pointsForLoss = score;
           }
-          else if (resultChar == U'Z')
+          else if (resultChar == U'A' || resultChar == U'Z')
           {
+            // Absence: zero-point-bye or forfeit loss. TRF-2026 uses 'A'; 'Z' is
+            // the legacy TRF(x)/JaVaFo code, accepted for backwards compatibility.
             tournament.pointsForZeroPointBye = score;
             tournament.pointsForForfeitLoss = score;
           }
@@ -895,6 +907,17 @@ namespace fileformats
               ++matchIndex;
             }
 
+            // Account for blank-type 299 penalties/bonuses (TRF-2026): the
+            // listed standings score legitimately includes these adjustments.
+            const long abnormalAdjustment =
+              individualAbnormalAdjustment(player, tournament);
+            if (abnormalAdjustment != 0)
+            {
+              const long adjusted =
+                static_cast<long>(points) + abnormalAdjustment;
+              points = adjusted < 0 ? 0u : static_cast<tournament::points>(adjusted);
+            }
+
             if (player.scoreWithoutAcceleration != points)
             {
               if (
@@ -1044,7 +1067,8 @@ namespace fileformats
     tournament::Tournament readFile(
       std::istream &stream,
       const bool includesUnpairedRound,
-      FileData *const data)
+      FileData *const data,
+      const bool checkScores)
     {
       tournament::Tournament result;
       bool useRank{ };
@@ -1271,8 +1295,8 @@ namespace fileformats
               }
               else if (prefix == U"299")
               {
-                throw InvalidLineException(
-                  "abnormal assignment points are not yet supported");
+                result.abnormalAssignments.push_back(
+                  readAbnormalAssignment(line));
               }
             }
             catch (const InvalidLineException &exception)
@@ -1351,7 +1375,13 @@ namespace fileformats
         result.initialColor = inferFirstColor(result);
       }
       validatePairConsistency(result);
-      validateScores(result);
+      // In team competitions the 001 Points field is informative (TRF-2026) and
+      // need not equal the player's game results, so the team reader disables
+      // this check; team scores are derived from match/game points elsewhere.
+      if (checkScores)
+      {
+        validateScores(result);
+      }
 
       return result;
     }

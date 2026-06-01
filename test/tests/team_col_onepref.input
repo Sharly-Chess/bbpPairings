@@ -1,0 +1,13 @@
+012 C4.3.2 grant the only preference
+152 W
+142 3
+192 FIDE_TEAM_TYPEA_MP_GP
+362 TW  2.0   TD  1.0   TL  0.0
+001    1      T1                                2500                             2.0    1     3 w 1     4 w 1
+001    2      T2                                2500                             2.0    2     4 w 1     3 b 1
+001    3      T3                                2500                             0.0    3     1 b 0     2 w 0
+001    4      T4                                2500                             0.0    4     2 b 0     1 b 0
+310 1   Team1                                                               1
+310 2   Team2                                                               2
+310 3   Team3                                                               3
+310 4   Team4                                                               4
