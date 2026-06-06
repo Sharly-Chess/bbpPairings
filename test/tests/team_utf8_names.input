@@ -1,0 +1,17 @@
+012 UTF-8 team names must not shift the 310 member columns
+152 W
+142 3
+192 FIDE_TEAM_TYPEA_MP_GP
+362 TW  2.0   TD  1.0   TL  0.0
+001    1      P1                                2500                             2.0    1     5 w 1     7 w 1
+001    2      P2                                2500                             1.5    2     6 b 1     8 b =
+001    3      P3                                2500                             2.0    3     7 w 1     5 w 1
+001    4      P4                                2500                             2.0    4     8 b 1     6 b 1
+001    5      P5                                2500                             0.0    5     1 b 0     3 b 0
+001    6      P6                                2500                             0.0    6     2 w 0     4 w 0
+001    7      P7                                2500                             0.0    7     3 b 0     1 b 0
+001    8      P8                                2500                             0.5    8     4 w 0     2 w =
+310 1   Liffré A                                                            1    2
+310 2   Pacé B                                                              3    4
+310 3   Vitré                                                               5    6
+310 4   Évran D                                                             7    8

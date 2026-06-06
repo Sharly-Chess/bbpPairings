@@ -1,7 +1,9 @@
 #include <algorithm>
 #include <cmath>
+#include <codecvt>
 #include <cstddef>
 #include <istream>
+#include <locale>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -80,6 +82,29 @@ namespace fileformats
           return "";
         }
         return line.substr(start1 - 1u, width);
+      }
+
+      // Reduce a UTF-8 line to one byte per CHARACTER (non-ASCII characters
+      // become '?') so byte positions equal the spec's column positions. The
+      // data fields parsed here are pure ASCII; only free-text names (e.g.
+      // accented team names in 310/013) contain multi-byte characters, and
+      // without this they would shift the columns of every field after them.
+      // Decoding and validation use the same mechanism as trf::readFile.
+      std::string asciiColumns(const std::string &line)
+      {
+        std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> convert;
+        const std::u32string decoded = convert.from_bytes(line);
+        if (convert.converted() < line.size())
+        {
+          throw FileFormatException("The file is not legal UTF-8.");
+        }
+        std::string out;
+        out.reserve(decoded.size());
+        for (const char32_t c : decoded)
+        {
+          out.push_back(c < 0x80u ? static_cast<char>(c) : '?');
+        }
+        return out;
       }
 
       // Parse a points value such as "2.0" or "11.5" into tenths (20, 115).
@@ -199,7 +224,11 @@ namespace fileformats
         {
           line.pop_back();
         }
-        const std::string code = line.substr(0, 3);
+        // Column-based extraction must count CHARACTERS, not bytes (names may
+        // contain multi-byte UTF-8). The original line is still forwarded
+        // verbatim to the individual reader, which does its own decoding.
+        const std::string cline = asciiColumns(line);
+        const std::string code = cline.substr(0, 3);
 
         if (code == "310" || code == "013")
         {
@@ -207,7 +236,7 @@ namespace fileformats
           std::size_t memberStart;
           if (code == "310")
           {
-            const std::string tpnStr = trim(field(line, 5u, 3u));
+            const std::string tpnStr = trim(field(cline, 5u, 3u));
             roster.tpn = tpnStr.empty() ? rosters.size() + 1u : std::stoul(tpnStr);
             memberStart = 74u; // §310: members at 74-77, 79-82, ...
           }
@@ -216,9 +245,9 @@ namespace fileformats
             roster.tpn = rosters.size() + 1u; // §013 has no TPN: use file order
             memberStart = 37u; // §013: members at 37-40, 42-45, ...
           }
-          for (std::size_t col = memberStart; col - 1u < line.size(); col += 5u)
+          for (std::size_t col = memberStart; col - 1u < cline.size(); col += 5u)
           {
-            const std::string idStr = trim(field(line, col, 4u));
+            const std::string idStr = trim(field(cline, col, 4u));
             if (idStr.empty())
             {
               continue;
@@ -242,9 +271,9 @@ namespace fileformats
           const std::size_t valCols[] = { 7u, 16u, 25u };
           for (int k = 0; k < 3; ++k)
           {
-            const std::string sym = trim(field(line, symCols[k], 2u));
+            const std::string sym = trim(field(cline, symCols[k], 2u));
             tournament::points value;
-            if (sym.empty() || !parsePoints(field(line, valCols[k], 4u), value))
+            if (sym.empty() || !parsePoints(field(cline, valCols[k], 4u), value))
             {
               continue;
             }
@@ -258,12 +287,12 @@ namespace fileformats
         if (code == "320")
         {
           tournament::points value;
-          if (parsePoints(field(line, 5u, 4u), value))
+          if (parsePoints(field(cline, 5u, 4u), value))
           {
             pabMatchPoints = value;
             pab320Mp = true;
           }
-          if (parsePoints(field(line, 10u, 4u), value))
+          if (parsePoints(field(cline, 10u, 4u), value))
           {
             pabGamePoints = value;
             pab320Gp = true;
@@ -273,7 +302,7 @@ namespace fileformats
 
         if (code == "192")
         {
-          const std::string arg = trim(line.substr(std::min<std::size_t>(4u, line.size())));
+          const std::string arg = trim(cline.substr(std::min<std::size_t>(4u, cline.size())));
           if (arg.find("TEAM") != std::string::npos)
           {
             config = parse192(arg);
@@ -290,12 +319,12 @@ namespace fileformats
           // does not choke on or misapply it.
           tournament::points mp = 0u;
           tournament::points gp = 0u;
-          parsePoints(field(line, 5u, 4u), mp);
-          parsePoints(field(line, 10u, 4u), gp);
-          const std::string rsStr = trim(field(line, 15u, 3u));
-          const std::string reStr = trim(field(line, 19u, 3u));
-          const std::string f1Str = trim(field(line, 23u, 4u));
-          const std::string f2Str = trim(field(line, 28u, 4u));
+          parsePoints(field(cline, 5u, 4u), mp);
+          parsePoints(field(cline, 10u, 4u), gp);
+          const std::string rsStr = trim(field(cline, 15u, 3u));
+          const std::string reStr = trim(field(cline, 19u, 3u));
+          const std::string f1Str = trim(field(cline, 23u, 4u));
+          const std::string f2Str = trim(field(cline, 28u, 4u));
           if (!rsStr.empty() && !reStr.empty() && !f1Str.empty() && !f2Str.empty())
           {
             TeamAccel a{ };
@@ -319,15 +348,15 @@ namespace fileformats
           // Team bye request. Type at 5 (F/H/Z), round 7-9, team IDs 11-14,
           // 16-19, ... Stripped from the member stream so trf does not misapply
           // it to a member player.
-          const std::string type = trim(field(line, 5u, 1u));
-          const std::string roundStr = trim(field(line, 7u, 3u));
+          const std::string type = trim(field(cline, 5u, 1u));
+          const std::string roundStr = trim(field(cline, 7u, 3u));
           if (!type.empty() && !roundStr.empty())
           {
             const tournament::round_index rd =
               static_cast<tournament::round_index>(std::stoul(roundStr) - 1u);
-            for (std::size_t col = 11u; col - 1u < line.size(); col += 5u)
+            for (std::size_t col = 11u; col - 1u < cline.size(); col += 5u)
             {
-              const std::string idStr = trim(field(line, col, 4u));
+              const std::string idStr = trim(field(cline, col, 4u));
               if (idStr.empty())
               {
                 continue;
@@ -350,10 +379,10 @@ namespace fileformats
         {
           // Team forfeit. Type at 5-6 (+-/-+/--), round 8-10, White team 12-14,
           // Black team 16-18.
-          const std::string type = trim(field(line, 5u, 2u));
-          const std::string roundStr = trim(field(line, 8u, 3u));
-          const std::string whiteStr = trim(field(line, 12u, 3u));
-          const std::string blackStr = trim(field(line, 16u, 3u));
+          const std::string type = trim(field(cline, 5u, 2u));
+          const std::string roundStr = trim(field(cline, 8u, 3u));
+          const std::string whiteStr = trim(field(cline, 12u, 3u));
+          const std::string blackStr = trim(field(cline, 16u, 3u));
           if (!roundStr.empty() && !whiteStr.empty() && !blackStr.empty()
                 && type.size() == 2u)
           {
