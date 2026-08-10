@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <deque>
 #include <list>
 #include <ostream>
+#include <string>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -10,6 +12,7 @@
 
 #include <tournament/tournament.h>
 #include <utility/typesizes.h>
+#include <utility/uintstringconversion.h>
 #include <utility/uinttypes.h>
 
 #include "common.h"
@@ -620,6 +623,64 @@ namespace swisssystems
         }
         return true;
       }
+
+      /**
+       * Print the checklist for the round being paired: one row per team, in
+       * the order the pairing considered them. The shared printer supplies
+       * the ID, score, colour history and colour preference columns; the
+       * specialty columns carry what belongs to the team system alone — the
+       * secondary score colour allocation reads (§4.2.2), bye eligibility
+       * ([C2]) and the match the team was given.
+       *
+       * *pairings* is null when no legal pairing was found, so the rows show
+       * the inputs the search worked from without a resulting match.
+       */
+      void printTeamChecklist(
+        std::ostream &ostream,
+        const tournament::Tournament &tournament,
+        const std::vector<const tournament::Player *> &orderedTeams,
+        const TeamConfig &config,
+        const std::list<Pairing> *const pairings)
+      {
+        std::unordered_map<tournament::player_index, std::string> assignment;
+        if (pairings)
+        {
+          for (const Pairing &pairing : *pairings)
+          {
+            // A bye is emitted as a team paired with itself.
+            if (pairing.white == pairing.black)
+            {
+              assignment[pairing.white] = "(bye)";
+              continue;
+            }
+            assignment[pairing.white] =
+              '('
+                + utility::uintstringconversion::toString(pairing.black + 1u)
+                + "W)";
+            assignment[pairing.black] =
+              '('
+                + utility::uintstringconversion::toString(pairing.white + 1u)
+                + "B)";
+          }
+        }
+        swisssystems::printChecklist(
+          ostream,
+          std::deque<std::string>{"2nd", "Bye", "Cur"},
+          [&assignment, &config, &tournament]
+            (const tournament::Player &team)
+          {
+            const auto assigned = assignment.find(team.id);
+            return std::deque<std::string>{
+              config.useSecondaryForColour
+                ? utility::uintstringconversion::toString(team.secondaryScore, 1)
+                : std::string{"-"},
+              swisssystems::eligibleForBye(team, tournament) ? "Y" : "N",
+              assigned == assignment.end() ? std::string{} : assigned->second
+            };
+          },
+          tournament,
+          orderedTeams);
+      }
     }
 
     /**
@@ -627,7 +688,7 @@ namespace swisssystems
      */
     std::list<Pairing> computeMatching(
       tournament::Tournament &&tournament,
-      std::ostream *const /*checklistStream*/)
+      std::ostream *const checklistStream)
     {
       const TeamConfig config = getConfig(tournament);
       const bool isLastRound =
@@ -765,6 +826,11 @@ namespace swisssystems
 
       if (pairTeams.empty())
       {
+        if (checklistStream)
+        {
+          printTeamChecklist(
+            *checklistStream, tournament, teams, config, &result);
+        }
         return result;
       }
 
@@ -868,6 +934,11 @@ namespace swisssystems
       {
         if (matching[i] == i)
         {
+          if (checklistStream)
+          {
+            printTeamChecklist(
+              *checklistStream, tournament, teams, config, nullptr);
+          }
           throw NoValidPairingException(
             "The teams could not be simultaneously paired while satisfying the "
             "absolute criteria.");
@@ -886,6 +957,11 @@ namespace swisssystems
         result.emplace_back(first.id, second.id, firstColour);
       }
 
+      if (checklistStream)
+      {
+        printTeamChecklist(
+          *checklistStream, tournament, teams, config, &result);
+      }
       return result;
     }
   }
