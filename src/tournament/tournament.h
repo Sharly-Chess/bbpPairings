@@ -212,6 +212,21 @@ namespace tournament
      * allocation (C.04.6 §4.2.2). Zero for individual systems.
      */
     points secondaryScore{ };
+    /**
+     * What each round contributed to the secondary score, in order. The total
+     * above is the whole file's; the checker re-pairs one round at a time and
+     * must see only what the rounds before it gave, which this allows without
+     * the core having to know the field is here.
+     */
+    std::vector<points> secondaryScoreByRound{ };
+
+    /**
+     * What each round contributed to the primary score, in order. A team's
+     * total is in the primary basis the competition chose, and getPoints
+     * answers in match points, so the two cannot be subtracted from one
+     * another to recover the score as it stood some rounds ago.
+     */
+    std::vector<points> primaryScoreByRound{ };
 
     Color colorPreference = COLOR_NONE;
     Color repeatedColor = COLOR_NONE;

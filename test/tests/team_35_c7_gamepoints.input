@@ -1,0 +1,221 @@
+012 Generated tournament
+032 FRA
+042 2026/09/25
+052 2026/09/25
+062 96
+072 96
+082 16
+132                                                                                                                                                  
+142 6
+152 W
+172 FRA FIDE
+182 Sharly Chess
+192 FIDE_TEAM_TYPEB_GP
+212 PTS,BH
+352 WBWBWB
+362 TW 2.0   TD 1.0   TL 0.0
+
+### SSSS sTTT NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN RRRR FFF IIIIIIIIIII BBBB/BB/BB PPPP RRRR  1111 1 1  2222 2 2  3333 3 3  4444 4 4  5555 5 5  6666 6 6
+001    1      Team001Board1, Test               2453 FID                         4.0    7     8 w =     7 b 1     3 w 1
+001    2      Team002Board1, Test               2366 FID                         2.0   58     9 b 0     6 w 1    12 w 1
+001    3      Team003Board1, Test               2279 FID                         3.0   24    10 w =    11 b 1     1 b 0
+001    4      Team004Board1, Test               2193 FID                         3.5   16    11 b 0    10 w 1
+001    5      Team005Board1, Test               2106 FID                         3.5   14    13 w =              11 w 1
+001    6      Team006Board1, Test               2019 FID                         1.0   82    14 b 0     2 b 0    10 w =
+001    7      Team007Board1, Test               1932 FID                         3.0   25    16 w =     1 w 0    15 b 1
+001    8      Team008Board1, Test               1845 FID                         2.5   42     1 b 0    13 w 1     9 w 0
+001    9      Team009Board1, Test               1759 FID                         2.5   40     2 w =               8 b 1
+001   10      Team010Board1, Test               1672 FID                         1.5   44     3 b 0     4 b 0     6 b =
+001   11      Team011Board1, Test               1585 FID                         1.5   70     4 w =     3 w 0     5 b 0
+001   12      Team012Board1, Test               1498 FID                         1.5   75              14 w 1     2 b 0
+001   13      Team013Board1, Test               1411 FID                         0.0   84     5 b 0     8 b 0  0000 - U
+001   14      Team014Board1, Test               1325 FID                         2.5   47     6 w =    12 b 0    16 b 1
+001   15      Team015Board1, Test               1238 FID                         1.5   77                         7 w 0
+001   16      Team016Board1, Test               1151 FID                         2.0   35     7 b 0  0000 - U    14 w 0
+001   17      Team001Board2, Test               2439 FID                         4.0    7    24 b =    23 w 1    19 b 1
+001   18      Team002Board2, Test               2352 FID                         2.0   58    25 w 0    22 b 1    28 b 1
+001   19      Team003Board2, Test               2265 FID                         4.0    9    26 b =    27 w 1    17 w 0
+001   20      Team004Board2, Test               2178 FID                         3.5   18    27 w 0    26 b 1
+001   21      Team005Board2, Test               2091 FID                         1.5   72    29 b =              27 b 1
+001   22      Team006Board2, Test               2005 FID                         1.5   71    30 w 0    18 w 0    26 b 1
+001   23      Team007Board2, Test               1918 FID                         2.5   41    32 b =    17 b 0    31 w 1
+001   24      Team008Board2, Test               1831 FID                         3.5   15    17 w 0    29 b 1    25 b =
+001   25      Team009Board2, Test               1744 FID                         3.0   20    18 b =              24 w =
+001   26      Team010Board2, Test               1657 FID                         1.0   53    19 w 0    20 w 0    22 w 0
+001   27      Team011Board2, Test               1571 FID                         2.0   58    20 b =    19 b 0    21 w 0
+001   28      Team012Board2, Test               1484 FID                         1.5   74              30 b 0    18 w 0
+001   29      Team013Board2, Test               1397 FID                         0.0   86    21 w 0    24 w 0  0000 - U
+001   30      Team014Board2, Test               1310 FID                         3.5   17    22 b =    28 w 1    32 w =
+001   31      Team015Board2, Test               1223 FID                         0.5   96                        23 b 0
+001   32      Team016Board2, Test               1137 FID                         1.5   46    23 w 0  0000 - U    30 b =
+001   33      Team001Board3, Test               2424 FID                         4.5    2    40 w -    39 b 1    35 w 1
+001   34      Team002Board3, Test               2337 FID                         3.5   11    41 b +    38 w 1    44 w 1
+001   35      Team003Board3, Test               2250 FID                         3.5   10    42 w -    43 b 1    33 b 0
+001   36      Team004Board3, Test               2164 FID                         4.5    3    43 b +    42 w =
+001   37      Team005Board3, Test               2077 FID                         1.0   79    45 w -              43 w 1
+001   38      Team006Board3, Test               1990 FID                         2.0   49    46 b +    34 b 0    42 w 1
+001   39      Team007Board3, Test               1903 FID                         2.0   56    48 w -    33 w 0    47 b 1
+001   40      Team008Board3, Test               1816 FID                         5.0    1    33 b +    45 w 1    41 w 0
+001   41      Team009Board3, Test               1730 FID                         2.5   39    34 w -              40 b 1
+001   42      Team010Board3, Test               1643 FID                         2.5   12    35 b +    36 b =    38 b 0
+001   43      Team011Board3, Test               1556 FID                         3.0   31    36 w -    35 w 0    37 b 0
+001   44      Team012Board3, Test               1469 FID                         3.0   21              46 w 1    34 b 0
+001   45      Team013Board3, Test               1382 FID                         1.0   50    37 b +    40 b 0  0000 - U
+001   46      Team014Board3, Test               1296 FID                         2.0   53    38 w -    44 b 0    48 b 1
+001   47      Team015Board3, Test               1209 FID                         1.0   86                        39 w 0
+001   48      Team016Board3, Test               1122 FID                         2.0   27    39 b +  0000 - U    46 w 0
+001   49      Team001Board4, Test               2410 FID                         4.5    5    56 b +    55 w =    51 b =
+001   50      Team002Board4, Test               2323 FID                         2.0   51    57 w -    54 b 0    60 b 1
+001   51      Team003Board4, Test               2236 FID                         3.5   13    58 b +    59 w =    49 w =
+001   52      Team004Board4, Test               2149 FID                         1.5   77    59 w -    58 b 0
+001   53      Team005Board4, Test               2062 FID                         3.0   23    61 b +              59 b 1
+001   54      Team006Board4, Test               1976 FID                         3.0   37    62 w -    50 w =    58 b 1
+001   55      Team007Board4, Test               1889 FID                         2.0   57    64 b +    49 b 0    63 w 1
+001   56      Team008Board4, Test               1802 FID                         1.5   73    49 w -    61 b 0    57 b =
+001   57      Team009Board4, Test               1715 FID                         2.5   42    50 b +              56 w =
+001   58      Team010Board4, Test               1628 FID                         0.5   75    51 w -    52 w =    54 w 0
+001   59      Team011Board4, Test               1542 FID                         3.0   27    52 b +    51 b 0    53 w 0
+001   60      Team012Board4, Test               1455 FID                         2.5   45              62 b 0    50 w 0
+001   61      Team013Board4, Test               1368 FID                         1.5   48    53 w -    56 w =  0000 - U
+001   62      Team014Board4, Test               1281 FID                         3.0   31    54 b +    60 w =    64 w 1
+001   63      Team015Board4, Test               1194 FID                         2.0   61                        55 b 0
+001   64      Team016Board4, Test               1108 FID                         0.0   85    55 w -  0000 - U    62 b 0
+001   65      Team001Board5, Test               2395 FID                         4.5    3    72 w 1    71 b 1    67 w =
+001   66      Team002Board5, Test               2308 FID                         3.0   22    73 b 1    70 w 1    76 w 1
+001   67      Team003Board5, Test               2222 FID                         4.5    5    74 w 1    75 b 1    65 b =
+001   68      Team004Board5, Test               2135 FID                         3.0   35    75 b 0    74 w 1
+001   69      Team005Board5, Test               2048 FID                         2.0   53    77 w 1              75 w 1
+001   70      Team006Board5, Test               1961 FID                         3.0   27    78 b 1    66 b 0    74 w 1
+001   71      Team007Board5, Test               1874 FID                         2.0   51    80 w 1    65 w 0    79 b 1
+001   72      Team008Board5, Test               1788 FID                         3.0   31    65 b 0    77 w 1    73 w 1
+001   73      Team009Board5, Test               1701 FID                         1.0   80    66 w 0              72 b 0
+001   74      Team010Board5, Test               1614 FID                         0.0   81    67 b 0    68 b 0    70 b 0
+001   75      Team011Board5, Test               1527 FID                         3.0   31    68 w 1    67 w 0    69 b 0
+001   76      Team012Board5, Test               1440 FID                         3.0   25              78 w 1    66 b 0
+001   77      Team013Board5, Test               1354 FID                         0.0   86    69 b 0    72 b 0  0000 - U
+001   78      Team014Board5, Test               1267 FID                         2.0   63    70 w 0    76 b 0    80 b 1
+001   79      Team015Board5, Test               1180 FID                         1.0   90                        71 w 0
+001   80      Team016Board5, Test               1093 FID                         0.0   89    71 b 0  0000 - U    78 w 0
+001   81      Team001Board6, Test               2381 FID                         3.0   38    88 b =    87 w 0    83 b +
+001   82      Team002Board6, Test               2294 FID                         2.0   68    89 w 0    86 b 0    92 b +
+001   83      Team003Board6, Test               2207 FID                         1.0   92    90 b =    91 w 0    81 w -
+001   84      Team004Board6, Test               2120 FID                         2.0   67    91 w 0    90 b 0
+001   85      Team005Board6, Test               2033 FID                         3.0   27    93 b =              91 b +
+001   86      Team006Board6, Test               1947 FID                         2.0   69    94 w 0    82 w 0    90 b +
+001   87      Team007Board6, Test               1860 FID                         1.0   82    96 b =    81 b 0    95 w -
+001   88      Team008Board6, Test               1773 FID                         2.0   63    81 w 0    93 b 0    89 b +
+001   89      Team009Board6, Test               1686 FID                         1.0   90    82 b =              88 w -
+001   90      Team010Board6, Test               1599 FID                         0.0   92    83 w 0    84 w 0    86 w -
+001   91      Team011Board6, Test               1513 FID                         2.0   66    84 b =    83 b 0    85 w -
+001   92      Team012Board6, Test               1426 FID                         0.5   95              94 b 0    82 w -
+001   93      Team013Board6, Test               1339 FID                         1.0   63    85 w 0    88 w 0  0000 - U
+001   94      Team014Board6, Test               1252 FID                         1.0   94    86 b =    92 w 0    96 w -
+001   95      Team015Board6, Test               1165 FID                         2.0   61                        87 b +
+001   96      Team016Board6, Test               1079 FID                         2.5   19    87 w 0  0000 - U    94 b +
+
+### SSS NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN FFFFF EEEEEE MMMMMM GGGGGG RRR  PPP1 PPP2 PPP3 PPP4 PPP5 PPP6
+310   1 Team001                          TEAM0      0   12.0   24.5   1     1   17   33   49   65   81
+310   2 Team002                          TEAM1      0    5.0   14.5   7     2   18   34   50   66   82
+310   3 Team003                          TEAM2      0    9.0   19.5   2     3   19   35   51   67   83
+310   4 Team004                          TEAM3      0    8.0   18.0   3     4   20   36   52   68   84
+310   5 Team005                          TEAM4      0    6.0   14.0   9     5   21   37   53   69   85
+310   6 Team006                          TEAM5      0    3.0   12.5  12     6   22   38   54   70   86
+310   7 Team007                          TEAM6      0    5.0   12.5  11     7   23   39   55   71   87
+310   8 Team008                          TEAM7      0    7.0   17.5   4     8   24   40   56   72   88
+310   9 Team009                          TEAM8      0    6.0   15.5   5     9   25   41   57   73   89
+310  10 Team010                          TEAM9      0    3.0    8.5  15    10   26   42   58   74   90
+310  11 Team011                          TEA10      0    8.0   14.5   8    11   27   43   59   75   91
+310  12 Team012                          TEA11      0    7.0   15.0   6    12   28   44   60   76   92
+310  13 Team013                          TEA12      0    1.0    6.5  16    13   29   45   61   77   93
+310  14 Team014                          TEA13      0    6.0   14.0  10    14   30   46   62   78   94
+310  15 Team015                          TEA14      0    3.0   11.0  14    15   31   47   63   79   95
+310  16 Team016                          TEA15      0    3.0   11.0  13    16   32   48   64   80   96
+
+### T RRR PPP1 PPP2
+240 H   1   12
+240 Z   1   15
+240 H   2    9   15
+240 Z   2    5
+240 Z   3    4
+
+### MMMM GGGG RR1 RR2 RR3 RR4 RR5 RR6
+320  1.0  3.0      16  13  10
+
+### RRR TT1 TT2 PPP1 PPP2 PPP3 PPP4 PPP5 PPP6
+300   1   1   8    1   17   33   49   65   81
+300   1   8   1    8   24   40   56   72   88
+300   1   9   2    9   25   41   57   73   89
+300   1   2   9    2   18   34   50   66   82
+300   1   3  10    3   19   35   51   67   83
+300   1  10   3   10   26   42   58   74   90
+300   1  11   4   11   27   43   59   75   91
+300   1   4  11    4   20   36   52   68   84
+300   1   5  13    5   21   37   53   69   85
+300   1  13   5   13   29   45   61   77   93
+300   1  14   6   14   30   46   62   78   94
+300   1   6  14    6   22   38   54   70   86
+300   1   7  16    7   23   39   55   71   87
+300   1  16   7   16   32   48   64   80   96
+300   2   7   1    7   23   39   55   71   87
+300   2   1   7    1   17   33   49   65   81
+300   2  11   3   11   27   43   59   75   91
+300   2   3  11    3   19   35   51   67   83
+300   2  12  14   12   28   44   60   76   92
+300   2  14  12   14   30   46   62   78   94
+300   2   2   6    2   18   34   50   66   82
+300   2   6   2    6   22   38   54   70   86
+300   2   4  10    4   20   36   52   68   84
+300   2  10   4   10   26   42   58   74   90
+300   2   8  13    8   24   40   56   72   88
+300   2  13   8   13   29   45   61   77   93
+300   3   1   3    1   17   33   49   65   81
+300   3   3   1    3   19   35   51   67   83
+300   3   2  12    2   18   34   50   66   82
+300   3  12   2   12   28   44   60   76   92
+300   3   8   9    8   24   40   56   72   88
+300   3   9   8    9   25   41   57   73   89
+300   3  16  14   16   32   48   64   80   96
+300   3  14  16   14   30   46   62   78   94
+300   3   5  11    5   21   37   53   69   85
+300   3  11   5   11   27   43   59   75   91
+300   3  15   7   15   31   47   63   79   95
+300   3   7  15    7   23   39   55   71   87
+300   3   6  10    6   22   38   54   70   86
+300   3  10   6   10   26   42   58   74   90
+
+### Team pairings
+801  1 TEAM0 12.0 24.5   8 w     1  123456   7 b 111 1  123456   3 w 111==  123456   5 w  1111  123456   9 b 1 =  1 123456   2 b        123456
+801  2 TEAM1  5.0 14.5   9 b     1  123456   6 w 111 1  123456  12 w 11111  123456                       3 b 0 =  1 123456   1 w        123456
+801  3 TEAM2  9.0 19.5  10 w     1  123456  11 b 111 1  123456   1 b 000==  123456   7 w  1111  123456   2 w 1 =  0 123456   9 b        123456
+801  4 TEAM3  8.0 18.0  11 b     0  123456  10 w 11= 1  123456                      13 b  1111  123456  12 w 1 1  1 123456   5 b        123456
+801  5 TEAM4  6.0 14.0  13 w     1  123456                      11 w 11111  123456   1 b  0000  123456   8 b 1 0  1 123456   4 w        123456
+801  6 TEAM5  3.0 12.5  14 b     1  123456   2 b 000 0  123456  10 w =1111  123456   8 w  =0=1  123456   7 b = 0  1 123456  12 w        123456
+801  7 TEAM6  5.0 12.5  16 w     1  123456   1 w 000 0  123456  15 b 11111  123456   3 b  0000  123456   6 w = 1  0 123456   8 w        123456
+801  8 TEAM7  7.0 17.5   1 b     0  123456  13 w 111 1  123456   9 w 0=0=1  123456   6 b  =1=0  123456   5 w 0 1  0 123456   7 b        123456
+801  9 TEAM8  6.0 15.5   2 w     0  123456                       8 b 1=1=0  123456  14 b  1111  123456   1 w 0 =  0 123456   3 w        123456
+801 10 TEAM9  3.0  8.5   3 b     0  123456   4 b 00= 0  123456   6 b =0000  123456                      13 w 1 1  0 123456  14 w        123456
+801 11 TEA10  8.0 14.5   4 w     1  123456   3 w 000 0  123456   5 b 00000  123456  15 w  11=1  123456  14 b = 1  1 123456  16 b        123456
+801 12 TEA11  7.0 15.0                      14 w 101 1  123456   2 b 00000  123456  16 w  1111  123456   4 b 0 0  0 123456   6 b        123456
+801 13 TEA12  1.0  6.5   5 b     0  123456   8 b 000 0  123456                       4 w  0000  123456  10 b 0 0  1 123456  15 w        123456
+801 14 TEA13  6.0 14.0   6 w     0  123456  12 b 010 0  123456  16 b 1=111  123456   9 w  0000  123456  11 w = 0  0 123456  10 b        123456
+801 15 TEA14  3.0 11.0                                           7 w 00000  123456  11 b  00=0  123456  16 b 0 0  0 123456  13 b        123456
+801 16 TEA15  3.0 11.0   7 b     0  123456                      14 w 0=000  123456  12 b  0000  123456  15 w 1 1  1 123456  11 w        123456
+
+### Team results
+802  1 TEAM0   12.0   24.5    8 w  3.5      7 b  4.5      3 w  5.0      5 w  4.0      9 b  3.5      2 b  4.0  
+802  2 TEAM1    5.0   14.5    9 b  2.0      6 w  4.0     12 w  6.0    PAB    3.0      3 b  2.5      1 w  0.0  
+802  3 TEAM2    9.0   19.5   10 w  3.5     11 b  4.5      1 b  1.0      7 w  4.0      2 w  2.5      9 b  4.0  
+802  4 TEAM3    8.0   18.0   11 b  1.0     10 w  3.5    PAB    3.0     13 b  5.5     12 w  4.0      5 b  4.0  
+802  5 TEAM4    6.0   14.0   13 w  3.5    PAB    3.0     11 w  6.0      1 b  1.5      8 b  3.0      4 w  0.0  
+802  6 TEAM5    3.0   12.5   14 b  2.0      2 b  0.5     10 w  5.5      8 w  2.0      7 b  2.5     12 w  0.0  
+802  7 TEAM6    5.0   12.5   16 w  3.5      1 w  0.0     15 b  5.0      3 b  1.5      6 w  2.5      8 w  0.0  
+802  8 TEAM7    7.0   17.5    1 b  1.0     13 w  4.0      9 w  3.0      6 b  3.5      5 w  2.0      7 b  4.0  
+802  9 TEAM8    6.0   15.5    2 w  2.5    PAB    3.0      8 b  3.0     14 b  5.5      1 w  1.5      3 w  0.0  
+802 10 TEAM9    3.0    8.5    3 b  1.0      4 b  1.0      6 b  0.5    PAB    3.0     13 w  3.0     14 w  0.0  
+802 11 TEA10    8.0   14.5    4 w  3.5      3 w  0.0      5 b  0.0     15 w  3.5     14 b  3.5     16 b  4.0  
+802 12 TEA11    7.0   15.0  PAB    3.0     14 w  3.0      2 b  0.0     16 w  4.0      4 b  1.0      6 b  4.0  
+802 13 TEA12    1.0    6.5    5 b  1.0      8 b  0.5    PAB    3.0      4 w  0.0     10 b  2.0     15 w  0.0  
+802 14 TEA13    6.0   14.0    6 w  2.5     12 b  1.5     16 b  4.5      9 w  0.0     11 w  1.5     10 b  4.0  
+802 15 TEA14    3.0   11.0  PAB    3.0    PAB    3.0      7 w  1.0     11 b  2.0     16 b  1.0     13 b  4.0  
+802 16 TEA15    3.0   11.0    7 b  1.0    PAB    3.0     14 w  1.5     12 b  1.5     15 w  4.0     11 w  0.0  
+240 Z   4    2

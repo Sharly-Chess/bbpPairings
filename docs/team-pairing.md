@@ -121,13 +121,22 @@ Key structural differences from C.04.3 (Dutch, individuals):
 - §3.6.3 Pairings sorted by lexicographic order of identifier.
 - §3.6.4 Choose the **first** pairing also complying with `[C1]`, `[C8]`, `[C9]`, `[C10]`.
 
-> **Implementation note.** §3.6 is defined as enumerate-sort-pick, not max-weight matching.
-> Two implementation options: (a) reuse the blossom matcher with lexicographic edge weights
-> (hard `[C1]`; maximise `[C8]`/`[C9]`/`[C10]` compliance; then prefer lexicographically-smallest
-> identifier via decreasing-significance per-edge weights — the same technique Dutch uses to
-> encode JaVaFo's sequential order); (b) direct enumeration of bracket perfect matchings
-> (brackets are small). Default to (a) for robustness on large scoregroups; fall back to (b) if
-> the weight encoding for the lexicographic tiebreak proves awkward.
+> **Implementation note.** §3.5 and §3.6 are two orders, not one. §3.5 ranks sets of upfloaters
+> — `[C4]` and `[C5]` as outer loops, then the lexicographic order of their TPNs — and §3.6 then
+> ranks the pairings of the bracket that set produces. A set that wins §3.5 can lose on `[C8]`,
+> `[C9]`, `[C10]` and the identifier, so the choice of upfloaters cannot be folded into the
+> bracket's edge weights, nor into one matching over the whole round: it is enumerated
+> (`selectUpfloaters`), bracket by bracket, as §3.3.2 sets out. Brackets are small, and §3.5.5
+> stops at the first set that is legal and complies with `[C6]` and `[C7]`, which is usually the
+> first one tried.
+>
+> Within a bracket, §3.6 is defined as enumerate-sort-pick, and `pairBracket` reuses the blossom
+> matcher with lexicographic edge weights instead: `[C1]` is hard (a played pair weighs nothing,
+> and a pair taken anyway is rejected), `[C8]`/`[C9]`/`[C10]` compliance is maximised, and the
+> identifier of §3.6.2 is encoded in two fields — a bitmask over the pair tops, then
+> Σ topRank·botRank, which by the rearrangement inequality is maximal exactly when sorted tops
+> meet sorted bottoms, i.e. at the lexicographically smallest identifier. This is the same
+> technique Dutch uses to encode JaVaFo's sequential order.
 
 ---
 
@@ -143,6 +152,8 @@ Key structural differences from C.04.3 (Dutch, individuals):
   4. §4.3.4 (Type B only) only one **strong** preference → grant it.
   5. §4.3.5 lower CD → White. (Note: −2 < −1; +1 < +2.)
   6. §4.3.6 alternate to the most recent time one team had White and the other Black.
+     The two histories are read back over played matches only, and the step decides
+     only on such a round; the preferences are weighed by 4.3.2–4.3.4 and 4.3.7 alone.
   7. §4.3.7 grant the first-team's preference.
   8. §4.3.8 alternate the first-team's colour from its last played round.
   9. §4.3.9 alternate the other team's colour from its last played round.
@@ -196,6 +207,11 @@ A CLI flag may override the colour type. 192 is the authoritative source.
 
 `-p` team mode emits a **team pairing list**: each pair as (white TPN, black TPN) plus the PAB
 team. Board-level expansion is the caller's responsibility. (Proper `801`/`802` writing deferred.)
+
+`-c` team mode re-pairs every round from the rounds before it and lists where the file differs.
+A team's score at each round is rebuilt from what every round contributed to its primary and
+secondary scores (kept by the reader per round), so a competition ranked on game points is
+re-paired on game points.
 
 ---
 

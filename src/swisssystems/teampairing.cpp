@@ -35,18 +35,21 @@ namespace swisssystems
      * with those board-1 colours and the aggregated primary score
      * (scoreWithoutAcceleration) and secondary score (secondaryScore).
      *
-     * Design: unlike the individual Dutch engine (which iterates brackets), the
-     * team criteria are all additive / edge-local, and [C6] (next-bracket
-     * viability) is automatic when the whole round is paired by one global
-     * maximum-weight matching. So this reduces the round-pairing to a single
-     * matching over all unpaired teams, with a lexicographically-layered edge
-     * weight encoding the quality criteria in priority order. See
-     * docs/team-pairing.md §4.
+     * Design: the round is paired bracket by bracket, as §3.3.2 sets it out.
+     * Each bracket is the top scoregroup of what is left plus the set of
+     * upfloaters §3.5 selects for it, and the two stages have orders of their
+     * own that do not reduce to one another. §3.5 ranks the *sets*: [C4] and
+     * [C5] as outer loops, then the lexicographic order of their TPNs (§3.5.4),
+     * with legality, [C6] and [C7] deciding which is taken (§3.5.5). §3.6 then
+     * ranks the *pairings* of the bracket so settled, under [C1], [C8], [C9],
+     * [C10] and the identifier of §3.6.2. Only the second of those is edge-local
+     * enough for a matching, which is what pairBracket uses; the first is an
+     * enumeration, because the set that wins it can lose on every criterion the
+     * matching knows about. See docs/team-pairing.md §4.
      */
     namespace
     {
       typedef matching_computer::edge_weight edge_weight;
-      typedef tournament::player_index score_group_shift;
 
       /** The configuration carried on the tournament (set by the reader). */
       TeamConfig getConfig(const tournament::Tournament &tournament)
@@ -129,10 +132,38 @@ namespace swisssystems
       }
 
       /**
+       * A team's primary score as it stood `roundsBack` rounds before the end of
+       * what has been played. The rounds are summed from what each contributed,
+       * because the total is in the competition's primary basis while getPoints
+       * answers in match points: subtracting one from the other would only
+       * agree when match points are the primary score.
+       */
+      tournament::points scoreBefore(
+        const tournament::Player &team,
+        const tournament::round_index roundsBack,
+        const tournament::Tournament &tournament)
+      {
+        if (team.primaryScoreByRound.empty())
+        {
+          return team.scoreWithAcceleration(tournament, roundsBack);
+        }
+        tournament::points total{ };
+        for (
+          tournament::round_index r = 0;
+          r + roundsBack < tournament.playedRounds
+            && r < team.primaryScoreByRound.size();
+          ++r)
+        {
+          total += team.primaryScoreByRound[r];
+        }
+        return total;
+      }
+
+      /**
        * §1.5 A team floated in the round `roundsBack` before the current one if
-       * its opponent there had a different score. Byes count as floats too (an
-       * unplayed scoring round behaves like a down/up float for these purposes,
-       * matching the individual engine's getFloat). Used by [C7] and [C10].
+       * it played there against an opponent with a different score. A team that
+       * took a bye, or whose match was decided by forfeit, played no opponent
+       * and so did not float, however the round scored. Used by [C7] and [C10].
        */
       bool wasFloater(
         const tournament::Player &team,
@@ -147,14 +178,11 @@ namespace swisssystems
           team.matches[tournament.playedRounds - roundsBack];
         if (!match.gameWasPlayed)
         {
-          // A scoring unplayed round (e.g. PAB) is treated as a float.
-          return tournament.getPoints(team, match) > tournament.pointsForLoss;
+          return false;
         }
-        const tournament::points own =
-          team.scoreWithAcceleration(tournament, roundsBack);
+        const tournament::points own = scoreBefore(team, roundsBack, tournament);
         const tournament::points opp =
-          tournament.players[match.opponent]
-            .scoreWithAcceleration(tournament, roundsBack);
+          scoreBefore(tournament.players[match.opponent], roundsBack, tournament);
         return own != opp;
       }
 
@@ -194,11 +222,16 @@ namespace swisssystems
       {
         const int cd = colourDifference(team);
 
-        if (!hasPlayedAnyMatch(team) || (cd == 0 && isLastRound))
+        if (!hasPlayedAnyMatch(team))
         {
           return { tournament::COLOR_NONE, false };
         }
 
+        // §1.7.2's first two paragraphs, the strong preferences: worded as the
+        // Type A ones are, and not qualified by the round. What the fifth
+        // paragraph takes away in the last round is the mild preference a
+        // colour difference of zero would otherwise give, which is why the
+        // third and fourth paragraphs state that condition themselves.
         if (
           cd < -1
             || ((cd == 0 || cd == -1)
@@ -216,12 +249,14 @@ namespace swisssystems
 
         if (cd == -1
               || (cd == 0
+                    && !isLastRound
                     && lastPlayedColoursAre(team, tournament::COLOR_BLACK, 1)))
         {
           return { tournament::COLOR_WHITE, false };
         }
         if (cd == 1
               || (cd == 0
+                    && !isLastRound
                     && lastPlayedColoursAre(team, tournament::COLOR_WHITE, 1)))
         {
           return { tournament::COLOR_BLACK, false };
@@ -265,22 +300,22 @@ namespace swisssystems
       }
 
       /**
-       * Compute the edge weight for pairing teams a and b (or, when max==true,
-       * an upper bound used to size the dynamic integer). The weight packs the
-       * quality criteria as lexicographic fields, most significant first:
+       * Compute the edge weight for pairing teams a and b within one bracket
+       * (or, when max==true, an upper bound used to size the dynamic integer).
+       * §3.6.4 pairs a bracket under [C1], [C8], [C9], [C10] and the identifier
+       * of §3.6.2, and those are the only criteria here: the bracket's own
+       * membership is already settled by §3.5, which is what [C4], [C5], [C6]
+       * and [C7] govern. The weight packs them as lexicographic fields, most
+       * significant first:
        *
        *   completion : prefer matching every team (maximise pairs)
-       *   [C4]       : minimise upfloaters  (prefer same-scoregroup pairs)
-       *   [C5]       : maximise upfloater scores (prefer the smallest score gap)
-       *   [C7]       : minimise upfloaters that floated last round
        *   [C8]       : minimise unfulfilled colour preferences
        *   [C9]       : (Type B) minimise unfulfilled strong colour preferences
        *   [C10]      : minimise upfloaters' opponents that floated last round
        *   identifier : §3.6 lexicographic tie-break (prefer low TPNs)
        *
        * Each count field is `fieldBits` wide so the matching's per-field sums
-       * cannot carry into a higher-priority field; the [C5] score field is
-       * `scoreGroupsShift` wide for the same reason.
+       * cannot carry into a higher-priority field.
        */
       template <bool max = false>
       edge_weight computeEdgeWeight(
@@ -294,11 +329,8 @@ namespace swisssystems
         const std::vector<std::unordered_set<tournament::player_index>>
           &forbiddenPairs,
         const unsigned int fieldBits,
-        const score_group_shift scoreGroupsShift,
-        const std::unordered_map<tournament::points, score_group_shift>
-          &scoreGroupShifts,
         const unsigned int topFieldBits,
-        const unsigned int prodFieldBits,
+        const unsigned int bottomFieldBits,
         edge_weight &maxEdgeWeight)
       {
         typename
@@ -316,45 +348,11 @@ namespace swisssystems
         const tournament::points scoreA = scoreOf(a, tournament);
         const tournament::points scoreB = scoreOf(b, tournament);
         const bool sameScoreGroup = scoreA == scoreB;
-        const tournament::points upfloaterScore =
-          scoreA < scoreB ? scoreA : scoreB;
-        const tournament::Player &upfloater = scoreA < scoreB ? a : b;
         const tournament::Player &resident = scoreA < scoreB ? b : a;
 
         // completion: every legal pair contributes 1 here, so maximising the
         // matched count is the top priority (drives [C3]/§3.3.1).
         result |= max ? 1u : 1u;
-
-        // [C4] minimise upfloaters == maximise same-scoregroup pairs.
-        shiftEdgeWeight<max>(result, fieldBits);
-        result |= max ? 1u : (sameScoreGroup ? 1u : 0u);
-
-        // [C5] maximise upfloater scores: for a cross-scoregroup pair, add a bit
-        // at the upfloater's scoregroup offset, so higher upfloater scores
-        // dominate (smaller score gap preferred).
-        shiftEdgeWeight<max>(result, scoreGroupsShift);
-        if (max)
-        {
-          // Upper bound: all bits in this field set.
-        }
-        else if (!sameScoreGroup)
-        {
-          result +=
-            ((result & 0u) | 1u)
-              << scoreGroupShifts.find(upfloaterScore)->second;
-        }
-
-        // [C7] minimise upfloaters that were floaters the previous round
-        // (inactive in the last two rounds). Bonus when the upfloater did NOT
-        // float last round (or the pair is intra-scoregroup, i.e. no upfloater).
-        shiftEdgeWeight<max>(result, fieldBits);
-        result |=
-          max
-            ? 1u
-            : (sameScoreGroup || skipFloatHistory
-                  || !wasFloater(upfloater, 1u, tournament))
-                ? 1u
-                : 0u;
 
         // [C8] minimise unfulfilled colour preferences. A pair leaves a
         // preference unfulfilled exactly when both teams want the same colour;
@@ -411,14 +409,28 @@ namespace swisssystems
           result += ((result & 0u) | 1u) << (maxRank - topRank);
         }
 
-        // level 2: among pairings with the same tops, the smallest identifier
-        // pairs sorted tops with sorted bottoms in order (b_1 < b_2 < ...). By
-        // the rearrangement inequality this is the assignment maximising
-        // Σ topRank·botRank.
-        shiftEdgeWeight<max>(result, prodFieldBits);
-        if (!max)
+        // level 2: among the pairings that share those tops, §3.6.2 compares the
+        // bottom members in the order of their tops, so the bottom of the
+        // smallest top decides first. One field per top rank holds that pair's
+        // bottom, counted down from maxRank so that maximising the weight
+        // minimises the rank, and the fields run from the smallest top rank
+        // (most significant) to the largest. A rank that is nobody's top leaves
+        // its field empty in every candidate with these tops, so it cannot
+        // affect the comparison.
+        //
+        // Summing topRank·botRank instead only finds the assignment that sorts
+        // tops against sorted bottoms, which is the answer when nothing rules
+        // it out and not otherwise.
+        for (
+          tournament::player_index rank = 0;
+          rank <= maxRank;
+          ++rank)
         {
-          result += topRank * botRank;
+          shiftEdgeWeight<max>(result, bottomFieldBits);
+          if (!max && rank == topRank)
+          {
+            result += maxRank - botRank;
+          }
         }
 
         if (max)
@@ -432,6 +444,31 @@ namespace swisssystems
       }
 
       // ----- §4 Colour Allocation ---------------------------------------------
+
+      /**
+       * The secondary score as it stood before the round being paired. The
+       * total the file gives is the whole tournament's, which is what the
+       * pairing of the next round wants; the checker re-pairs earlier rounds
+       * and must see only what had been scored by then.
+       */
+      tournament::points secondaryScoreSoFar(
+        const tournament::Player &team,
+        const tournament::Tournament &tournament)
+      {
+        if (team.secondaryScoreByRound.empty())
+        {
+          return team.secondaryScore;
+        }
+        tournament::points total{ };
+        for (
+          tournament::round_index r = 0;
+          r < tournament.playedRounds && r < team.secondaryScoreByRound.size();
+          ++r)
+        {
+          total += team.secondaryScoreByRound[r];
+        }
+        return total;
+      }
 
       /**
        * §4.2 first-team: higher primary score; else higher secondary score (if
@@ -449,9 +486,14 @@ namespace swisssystems
         {
           return sa > sb; // §4.2.1
         }
-        if (config.useSecondaryForColour && a.secondaryScore != b.secondaryScore)
+        if (config.useSecondaryForColour)
         {
-          return a.secondaryScore > b.secondaryScore; // §4.2.2
+          const tournament::points sa2 = secondaryScoreSoFar(a, tournament);
+          const tournament::points sb2 = secondaryScoreSoFar(b, tournament);
+          if (sa2 != sb2)
+          {
+            return sa2 > sb2; // §4.2.2
+          }
         }
         return a.rankIndex < b.rankIndex; // §4.2.3 smaller TPN
       }
@@ -487,7 +529,9 @@ namespace swisssystems
         // §4.3.1 both teams have yet to play.
         if (!firstPlayed && !secondPlayed)
         {
-          const bool firstTpnOdd = ((first.rankIndex + 1u) & 1u) != 0u;
+          // A team keeps its TPN whoever is absent (art. 1.1): the team index
+          // is the TPN order, the rank index only the order among those present.
+          const bool firstTpnOdd = ((first.id + 1u) & 1u) != 0u;
           return
             firstTpnOdd
               ? tournament.initialColor
@@ -538,12 +582,14 @@ namespace swisssystems
         }
 
         // §4.3.6 alternate to the most recent round where one had White and the
-        // other Black.
-        const tournament::Color alternated =
-          choosePlayerNeutralColor(first, second);
-        if (alternated != tournament::COLOR_NONE)
+        // other Black. The preferences have had their say above.
+        tournament::Color firstThen;
+        tournament::Color secondThen;
+        findFirstColorDifference(first, second, firstThen, secondThen);
+        if (firstThen != tournament::COLOR_NONE
+              && secondThen != tournament::COLOR_NONE)
         {
-          return alternated;
+          return secondThen;
         }
 
         // §4.3.7 grant the first-team's preference.
@@ -567,7 +613,7 @@ namespace swisssystems
         }
 
         // Fallback: TPN parity against the initial colour (as §4.3.1).
-        return ((first.rankIndex + 1u) & 1u)
+        return ((first.id + 1u) & 1u)
           ? tournament.initialColor
           : invert(tournament.initialColor);
       }
@@ -622,6 +668,551 @@ namespace swisssystems
           }
         }
         return true;
+      }
+
+      // ----- §3.5 Upfloater Selection, §3.6 Bracket Pairing -------------------
+
+      typedef std::vector<const tournament::Player *> TeamList;
+      typedef
+        std::vector<
+          std::pair<const tournament::Player *, const tournament::Player *>>
+        PairList;
+
+      /** §1.2 order: descending score, then ascending TPN. */
+      void sortTeams(
+        TeamList &teams,
+        const tournament::Tournament &tournament)
+      {
+        std::sort(
+          teams.begin(),
+          teams.end(),
+          [&tournament](
+            const tournament::Player *const x,
+            const tournament::Player *const y)
+          {
+            const tournament::points sx = scoreOf(*x, tournament);
+            const tournament::points sy = scoreOf(*y, tournament);
+            if (sx != sy)
+            {
+              return sx > sy;
+            }
+            return x->rankIndex < y->rankIndex;
+          });
+      }
+
+      /**
+       * §3.6: pair one bracket. The identifier fields of the edge weight make
+       * the maximum-weight matching the first pairing in the order of §3.6.2-3
+       * that complies with [C1], [C8], [C9] and [C10]. Returns false when the
+       * bracket admits no pairing covering all of its teams (§3.6.1), which is
+       * what makes §3.5.5 move on to the next set of upfloaters.
+       *
+       * `bracket` must be in §1.2 order.
+       */
+      bool pairBracket(
+        const TeamList &bracket,
+        const TeamConfig &config,
+        const bool isLastRound,
+        const bool skipFloatHistory,
+        const tournament::Tournament &tournament,
+        const std::vector<std::unordered_set<tournament::player_index>>
+          &forbiddenPairs,
+        PairList *const out)
+      {
+        if (out)
+        {
+          out->clear();
+        }
+        const tournament::player_index teamCount = bracket.size();
+        if (teamCount & 1u)
+        {
+          return false;
+        }
+        if (!teamCount)
+        {
+          return true;
+        }
+
+        const unsigned int fieldBits =
+          utility::typesizes::bitsToRepresent<unsigned int>(teamCount);
+        tournament::player_index maxRank{ };
+        for (const tournament::Player *const team : bracket)
+        {
+          if (team->rankIndex > maxRank)
+          {
+            maxRank = team->rankIndex;
+          }
+        }
+        // Level-1 identifier field: a bitmask over the pair tops, one bit per
+        // rank up to maxRank.
+        const unsigned int topFieldBits = maxRank + 2u;
+        // Level-2 identifier fields: one per top rank, each holding that
+        // pair's bottom counted down from maxRank. Only one pair writes into
+        // any of them, so a rank's own width is all each needs.
+        const unsigned int bottomFieldBits =
+          utility::typesizes::bitsToRepresent<unsigned int>(maxRank + 1u);
+
+        edge_weight maxEdgeWeight{ 0u };
+        computeEdgeWeight<true>(
+          *bracket.front(),
+          *bracket.front(),
+          maxRank,
+          config,
+          isLastRound,
+          skipFloatHistory,
+          tournament,
+          forbiddenPairs,
+          fieldBits,
+          topFieldBits,
+          bottomFieldBits,
+          maxEdgeWeight);
+
+        matching_computer computer(teamCount, maxEdgeWeight);
+        for (tournament::player_index vertex = 0; vertex < teamCount; ++vertex)
+        {
+          computer.addVertex();
+        }
+        for (tournament::player_index i = 0; i < teamCount; ++i)
+        {
+          for (tournament::player_index j = 0; j < i; ++j)
+          {
+            computer.setEdgeWeight(
+              i,
+              j,
+              computeEdgeWeight(
+                *bracket[i],
+                *bracket[j],
+                maxRank,
+                config,
+                isLastRound,
+                skipFloatHistory,
+                tournament,
+                forbiddenPairs,
+                fieldBits,
+                topFieldBits,
+                bottomFieldBits,
+                maxEdgeWeight));
+          }
+        }
+        computer.computeMatching();
+        const std::vector<tournament::player_index> matching =
+          computer.getMatching();
+        for (tournament::player_index i = 0; i < teamCount; ++i)
+        {
+          if (matching[i] == i)
+          {
+            return false;
+          }
+          if (matching[i] < i)
+          {
+            continue; // pair already emitted
+          }
+          // A pair the teams have already played weighs nothing, so the
+          // matching gains as much by leaving both unmatched; make sure one was
+          // not taken anyway.
+          if (forbiddenPairs[bracket[i]->id].count(bracket[matching[i]]->id))
+          {
+            return false;
+          }
+          if (out)
+          {
+            out->emplace_back(bracket[i], bracket[matching[i]]);
+          }
+        }
+        return true;
+      }
+
+      /**
+       * [C7] §2.3.4: the number of upfloaters that were floaters in the
+       * previous round, nil when pairing the last two rounds.
+       */
+      std::size_t countC7(
+        const TeamList &upfloaters,
+        const bool skipFloatHistory,
+        const tournament::Tournament &tournament)
+      {
+        if (skipFloatHistory)
+        {
+          return 0u;
+        }
+        std::size_t count{ };
+        for (const tournament::Player *const team : upfloaters)
+        {
+          if (wasFloater(*team, 1u, tournament))
+          {
+            ++count;
+          }
+        }
+        return count;
+      }
+
+      /**
+       * [C6] §2.3.3: unless the following scoregroup is now empty — every one of
+       * its teams having been taken as an upfloater — what is left of it must
+       * still be pairable ([C1], [C3]) with the fewest upfloaters of its own
+       * ([C4]), which is none when it is even and one when it is odd. Only that
+       * one scoregroup is involved, whatever lower group the upfloaters came
+       * from.
+       */
+      bool checkC6(
+        const TeamList &rest,
+        const tournament::points followingScore,
+        const bool hasFollowing,
+        const tournament::Tournament &tournament,
+        const std::vector<std::unordered_set<tournament::player_index>>
+          &forbiddenPairs)
+      {
+        if (!hasFollowing)
+        {
+          return true;
+        }
+        TeamList following;
+        TeamList below;
+        for (const tournament::Player *const team : rest)
+        {
+          if (scoreOf(*team, tournament) == followingScore)
+          {
+            following.push_back(team);
+          }
+          else if (scoreOf(*team, tournament) < followingScore)
+          {
+            below.push_back(team);
+          }
+        }
+        if (following.empty())
+        {
+          return true; // §2.3.3, the scoregroup is now empty
+        }
+        if (!(following.size() & 1u))
+        {
+          return feasibleComplete(following, forbiddenPairs)
+            && feasibleComplete(below, forbiddenPairs);
+        }
+        for (std::size_t taken = 0; taken < below.size(); ++taken)
+        {
+          TeamList bracket = following;
+          bracket.push_back(below[taken]);
+          if (!feasibleComplete(bracket, forbiddenPairs))
+          {
+            continue;
+          }
+          TeamList remainder;
+          remainder.reserve(below.size() - 1u);
+          for (std::size_t index = 0; index < below.size(); ++index)
+          {
+            if (index != taken)
+            {
+              remainder.push_back(below[index]);
+            }
+          }
+          if (feasibleComplete(remainder, forbiddenPairs))
+          {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      /** Every choice of `k` of `n` indices, in lexicographic order. */
+      void indexCombinations(
+        const std::size_t n,
+        const std::size_t k,
+        std::vector<std::vector<std::size_t>> &combos)
+      {
+        if (k > n)
+        {
+          return;
+        }
+        std::vector<std::size_t> indices(k);
+        for (std::size_t index = 0; index < k; ++index)
+        {
+          indices[index] = index;
+        }
+        for (;;)
+        {
+          combos.push_back(indices);
+          if (!k)
+          {
+            return;
+          }
+          std::size_t position = k;
+          for (;;)
+          {
+            --position;
+            if (indices[position] != position + n - k)
+            {
+              ++indices[position];
+              for (std::size_t next = position + 1u; next < k; ++next)
+              {
+                indices[next] = indices[next - 1u] + 1u;
+              }
+              break;
+            }
+            if (!position)
+            {
+              return;
+            }
+          }
+        }
+      }
+
+      /** The profiles of `numup` upfloaters, each a descending score list. */
+      void buildProfiles(
+        const std::vector<tournament::points> &scores,
+        const std::vector<std::size_t> &counts,
+        const std::size_t numup,
+        const std::size_t from,
+        std::vector<tournament::points> &current,
+        std::vector<std::vector<tournament::points>> &profiles)
+      {
+        if (current.size() == numup)
+        {
+          profiles.push_back(current);
+          return;
+        }
+        for (std::size_t level = from; level < scores.size(); ++level)
+        {
+          for (
+            std::size_t take = 1u;
+            take <= counts[level] && current.size() + take <= numup;
+            ++take)
+          {
+            current.insert(current.end(), take, scores[level]);
+            buildProfiles(
+              scores, counts, numup, level + 1u, current, profiles);
+            current.resize(current.size() - take);
+          }
+        }
+      }
+
+      /**
+       * §3.5.2 with [C5] (§2.3.2): the score profiles of a set of `numup`
+       * upfloaters, best first. [C5] minimises the score differences taken in
+       * descending order, which is to maximise the upfloaters' scores taken in
+       * ascending order, so the profiles compare as their ascending score lists
+       * and the largest wins.
+       */
+      std::vector<std::vector<tournament::points>> upfloaterProfiles(
+        const TeamList &lower,
+        const std::size_t numup,
+        const tournament::Tournament &tournament)
+      {
+        std::vector<tournament::points> scores;
+        std::vector<std::size_t> counts;
+        for (const tournament::Player *const team : lower)
+        {
+          const tournament::points score = scoreOf(*team, tournament);
+          if (scores.empty() || score != scores.back())
+          {
+            scores.push_back(score);
+            counts.push_back(1u);
+          }
+          else
+          {
+            ++counts.back();
+          }
+        }
+        std::vector<std::vector<tournament::points>> profiles;
+        std::vector<tournament::points> current;
+        buildProfiles(scores, counts, numup, 0u, current, profiles);
+        std::sort(
+          profiles.begin(),
+          profiles.end(),
+          [](
+            const std::vector<tournament::points> &x,
+            const std::vector<tournament::points> &y)
+          {
+            const std::vector<tournament::points> ascendingX(
+              x.rbegin(), x.rend());
+            const std::vector<tournament::points> ascendingY(
+              y.rbegin(), y.rend());
+            return ascendingX > ascendingY;
+          });
+        return profiles;
+      }
+
+      /**
+       * Every set of upfloaters with the given score profile, in the order of
+       * §3.5.3 (within a set: descending score, then ascending TPN) and §3.5.4
+       * (among the sets: the lexicographic order of their TPNs).
+       */
+      std::vector<TeamList> upfloaterSets(
+        const TeamList &lower,
+        const std::vector<tournament::points> &profile,
+        const tournament::Tournament &tournament)
+      {
+        std::vector<TeamList> sets{ TeamList{} };
+        std::size_t start = 0;
+        while (start < profile.size())
+        {
+          std::size_t end = start;
+          while (end < profile.size() && profile[end] == profile[start])
+          {
+            ++end;
+          }
+          TeamList group;
+          for (const tournament::Player *const team : lower)
+          {
+            if (scoreOf(*team, tournament) == profile[start])
+            {
+              group.push_back(team);
+            }
+          }
+          std::vector<std::vector<std::size_t>> combos;
+          indexCombinations(group.size(), end - start, combos);
+          std::vector<TeamList> extended;
+          for (const TeamList &prefix : sets)
+          {
+            for (const std::vector<std::size_t> &combo : combos)
+            {
+              TeamList grown = prefix;
+              for (const std::size_t index : combo)
+              {
+                grown.push_back(group[index]);
+              }
+              extended.push_back(std::move(grown));
+            }
+          }
+          sets = std::move(extended);
+          start = end;
+        }
+        std::sort(
+          sets.begin(),
+          sets.end(),
+          [](const TeamList &x, const TeamList &y)
+          {
+            for (std::size_t index = 0; index < x.size() && index < y.size();
+                 ++index)
+            {
+              if (x[index]->rankIndex != y[index]->rankIndex)
+              {
+                return x[index]->rankIndex < y[index]->rankIndex;
+              }
+            }
+            return x.size() < y.size();
+          });
+        return sets;
+      }
+
+      /**
+       * §3.5: choose the upfloaters that join `residents`, and pair the bracket
+       * they form. [C4] (§2.3.1, the fewest upfloaters) and [C5] are the outer
+       * loops: the number grows from the fewest the parity of the residents
+       * allows, and for each number the score profiles are tried best first. A
+       * number or a profile no set of which gives a legal pairing is no
+       * candidate at all, since [C3] (§2.2.1) asks that all the teams not yet
+       * paired can be, so the search falls through to the next one.
+       *
+       * Within one profile the sets come in the order of §3.5.4, and §3.5.5
+       * takes the first that is legal and complies with [C6] and [C7] — read,
+       * as §2.3 asks ("comply as much as possible ... in descending priority"),
+       * as the smallest value of [C7] a legal set of this profile can reach.
+       *
+       * `remaining` is the residents and everything still to be paired below
+       * them, in §1.2 order.
+       */
+      bool selectUpfloaters(
+        const TeamList &residents,
+        const TeamList &remaining,
+        const TeamConfig &config,
+        const bool isLastRound,
+        const bool skipFloatHistory,
+        const tournament::Tournament &tournament,
+        const std::vector<std::unordered_set<tournament::player_index>>
+          &forbiddenPairs,
+        TeamList *const chosen,
+        PairList *const pairs)
+      {
+        const tournament::points residentScore =
+          scoreOf(*residents.front(), tournament);
+        TeamList lower;
+        for (const tournament::Player *const team : remaining)
+        {
+          if (scoreOf(*team, tournament) < residentScore)
+          {
+            lower.push_back(team); // §3.5.1
+          }
+        }
+        const bool hasFollowing = !lower.empty();
+        const tournament::points followingScore =
+          hasFollowing ? scoreOf(*lower.front(), tournament) : residentScore;
+
+        for (
+          std::size_t numup = residents.size() & 1u;
+          numup <= lower.size();
+          numup += 2u)
+        {
+          for (
+            const std::vector<tournament::points> &profile :
+              upfloaterProfiles(lower, numup, tournament))
+          {
+            bool found = false;
+            std::size_t bestC6{ };
+            std::size_t bestC7{ };
+            for (
+              const TeamList &set : upfloaterSets(lower, profile, tournament))
+            {
+              TeamList bracket = residents;
+              bracket.insert(bracket.end(), set.begin(), set.end());
+              sortTeams(bracket, tournament);
+              PairList bracketPairs;
+              if (
+                !pairBracket(
+                  bracket,
+                  config,
+                  isLastRound,
+                  skipFloatHistory,
+                  tournament,
+                  forbiddenPairs,
+                  &bracketPairs))
+              {
+                continue;
+              }
+              std::unordered_set<const tournament::Player *> inBracket(
+                bracket.begin(), bracket.end());
+              TeamList rest;
+              for (const tournament::Player *const team : remaining)
+              {
+                if (!inBracket.count(team))
+                {
+                  rest.push_back(team);
+                }
+              }
+              if (!feasibleComplete(rest, forbiddenPairs))
+              {
+                continue; // [C3] §2.2.1
+              }
+              const std::size_t c6 =
+                checkC6(
+                  rest,
+                  followingScore,
+                  hasFollowing,
+                  tournament,
+                  forbiddenPairs)
+                  ? 0u
+                  : 1u;
+              const std::size_t c7 =
+                countC7(set, skipFloatHistory, tournament);
+              if (!found || c6 < bestC6 || (c6 == bestC6 && c7 < bestC7))
+              {
+                found = true;
+                bestC6 = c6;
+                bestC7 = c7;
+                *chosen = set;
+                *pairs = bracketPairs;
+              }
+              if (!bestC6 && !bestC7)
+              {
+                break; // §3.5.5, the first such set
+              }
+            }
+            if (found)
+            {
+              return true;
+            }
+          }
+        }
+        return false;
       }
 
       /**
@@ -714,11 +1305,13 @@ namespace swisssystems
         }
         for (const tournament::Match &match : team.matches)
         {
-          // Two teams that were paired must not meet again (§2.1.1 [C1]),
-          // whether the match was played or decided by forfeit. A real opponent
-          // is indicated by match.opponent != team.id (a bye uses the team's own
-          // id).
-          if (match.opponent != team.id)
+          // Two teams that played must not meet again (§2.1.1 [C1]). A match
+          // they were paired for and did not play leaves them free to be paired
+          // again: art. 3.5 of the General Handling Rules, "two paired
+          // participants, who did not play their game or match, may be paired
+          // together in a future round". A real opponent is indicated by
+          // match.opponent != team.id (a bye uses the team's own id).
+          if (match.gameWasPlayed && match.opponent != team.id)
           {
             forbiddenPairs[team.id].insert(match.opponent);
           }
@@ -834,105 +1427,35 @@ namespace swisssystems
         return result;
       }
 
-      const tournament::player_index teamCount = pairTeams.size();
-
-      // Compute scoregroup bit offsets (for [C5]) and field widths.
-      score_group_shift scoreGroupsShift{ };
-      std::unordered_map<tournament::points, score_group_shift> scoreGroupShifts;
-      tournament::player_index repeated{ };
-      for (auto it = pairTeams.rbegin(); it != pairTeams.rend(); )
+      // §3.3.2: combine the top scoregroup with the set of upfloaters §3.5
+      // selects for it, pair that bracket (§3.6), and repeat with what is left.
+      TeamList remaining = pairTeams;
+      while (!remaining.empty())
       {
-        const auto current = it++;
-        ++repeated;
-        const tournament::points score = scoreOf(**current, tournament);
-        if (it == pairTeams.rend()
-              || score < scoreOf(**it, tournament))
+        const tournament::points topScore =
+          scoreOf(*remaining.front(), tournament);
+        TeamList residents;
+        for (const tournament::Player *const team : remaining)
         {
-          const unsigned int bits =
-            utility::typesizes::bitsToRepresent<unsigned int>(repeated);
-          scoreGroupShifts[score] = scoreGroupsShift;
-          repeated = 0;
-          scoreGroupsShift += bits;
+          if (scoreOf(*team, tournament) == topScore)
+          {
+            residents.push_back(team);
+          }
         }
-      }
 
-      // Each count field must hold a sum of up to teamCount/2 contributions.
-      const unsigned int fieldBits =
-        utility::typesizes::bitsToRepresent<unsigned int>(teamCount);
-      // The largest TPN-rank among the paired teams, used by the identifier
-      // tie-break fields.
-      tournament::player_index maxRank{ };
-      for (const tournament::Player *const team : pairTeams)
-      {
-        if (team->rankIndex > maxRank)
-        {
-          maxRank = team->rankIndex;
-        }
-      }
-      // Level-1 identifier field: a bitmask over tops (one bit per rank up to
-      // maxRank).
-      const unsigned int topFieldBits = maxRank + 2u;
-      // Level-2 identifier field: Σ topRank·botRank, at most
-      // (teamCount/2)·maxRank^2.
-      const unsigned int prodFieldBits =
-        utility::typesizes::bitsToRepresent<unsigned int>(
-          teamCount ? teamCount * (maxRank + 1u) * (maxRank + 1u) : 1u);
-
-      // Size the dynamic edge weight.
-      edge_weight maxEdgeWeight{ 0u };
-      computeEdgeWeight<true>(
-        *pairTeams.front(),
-        *pairTeams.front(),
-        maxRank,
-        config,
-        isLastRound,
-        skipFloatHistory,
-        tournament,
-        forbiddenPairs,
-        fieldBits,
-        scoreGroupsShift,
-        scoreGroupShifts,
-        topFieldBits,
-        prodFieldBits,
-        maxEdgeWeight);
-
-      matching_computer computer(teamCount, maxEdgeWeight);
-      for (tournament::player_index i = 0; i < teamCount; ++i)
-      {
-        computer.addVertex();
-      }
-      for (tournament::player_index i = 0; i < teamCount; ++i)
-      {
-        for (tournament::player_index j = 0; j < i; ++j)
-        {
-          computer.setEdgeWeight(
-            i,
-            j,
-            computeEdgeWeight(
-              *pairTeams[i],
-              *pairTeams[j],
-              maxRank,
-              config,
-              isLastRound,
-              skipFloatHistory,
-              tournament,
-              forbiddenPairs,
-              fieldBits,
-              scoreGroupsShift,
-              scoreGroupShifts,
-              topFieldBits,
-              prodFieldBits,
-              maxEdgeWeight));
-        }
-      }
-
-      computer.computeMatching();
-      const std::vector<tournament::player_index> matching =
-        computer.getMatching();
-
-      for (tournament::player_index i = 0; i < teamCount; ++i)
-      {
-        if (matching[i] == i)
+        TeamList chosen;
+        PairList bracketPairs;
+        if (
+          !selectUpfloaters(
+            residents,
+            remaining,
+            config,
+            isLastRound,
+            skipFloatHistory,
+            tournament,
+            forbiddenPairs,
+            &chosen,
+            &bracketPairs))
         {
           if (checklistStream)
           {
@@ -940,21 +1463,34 @@ namespace swisssystems
               *checklistStream, tournament, teams, config, nullptr);
           }
           throw NoValidPairingException(
-            "The teams could not be simultaneously paired while satisfying the "
-            "absolute criteria.");
+            "No set of upfloaters gives the score bracket a legal pairing "
+            "(C.04.6 art. 3.3.3).");
         }
-        if (matching[i] < i)
+
+        for (const auto &pair : bracketPairs)
         {
-          continue; // pair already emitted
+          const tournament::Player &x = *pair.first;
+          const tournament::Player &y = *pair.second;
+          const tournament::Player &first =
+            isFirstTeam(x, y, config, tournament) ? x : y;
+          const tournament::Player &second = &first == &x ? y : x;
+          const tournament::Color firstColour =
+            colourForFirstTeam(first, second, config, isLastRound, tournament);
+          result.emplace_back(first.id, second.id, firstColour);
         }
-        const tournament::Player &x = *pairTeams[i];
-        const tournament::Player &y = *pairTeams[matching[i]];
-        const tournament::Player &first =
-          isFirstTeam(x, y, config, tournament) ? x : y;
-        const tournament::Player &second = &first == &x ? y : x;
-        const tournament::Color firstColour =
-          colourForFirstTeam(first, second, config, isLastRound, tournament);
-        result.emplace_back(first.id, second.id, firstColour);
+
+        std::unordered_set<const tournament::Player *> paired(
+          residents.begin(), residents.end());
+        paired.insert(chosen.begin(), chosen.end());
+        TeamList rest;
+        for (const tournament::Player *const team : remaining)
+        {
+          if (!paired.count(team))
+          {
+            rest.push_back(team);
+          }
+        }
+        remaining = std::move(rest);
       }
 
       if (checklistStream)

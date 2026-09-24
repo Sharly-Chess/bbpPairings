@@ -1,0 +1,104 @@
+012 Generated tournament
+022 Paris
+032 FRA
+042 2026/09/25
+052 2026/09/25
+062 40
+072 40
+082 10
+132                                                                                                                    
+142 5
+152 W
+162  P 2.0
+172 FRA FIDE
+182 Sharly Chess
+192 FIDE_TEAM_GP
+212 PTS,EGGSB/P
+352 WBWB
+362 TW 2.0   TD 1.0   TL 0.0
+
+001    1      TEAM001BOARD1, Test               2295 FID                         2.0    3              21 b 1    25 w 1
+001    2      TEAM001BOARD2, Test               2271 FID                         1.5   13              22 w 1    26 b =
+001    3      TEAM001BOARD3, Test               2246 FID                         1.0   15              23 b 1    27 w 0
+001    4      TEAM001BOARD4, Test               2222 FID                         1.0   15              24 w -    28 b +
+001    5      TEAM002BOARD1, Test               2198 FID                         3.0    1    21 w 1    13 b 1    17 w 1
+001    6      TEAM002BOARD2, Test               2173 FID                         2.0    3    22 b =    14 w 1    18 b =
+001    7      TEAM002BOARD3, Test               2149 FID                         2.0    3    23 w 1    15 b 1    19 w 0
+001    8      TEAM002BOARD4, Test               2124 FID                         2.0    3    24 b 1    16 w -    20 b +
+001    9      TEAM003BOARD1, Test               2100 FID                         1.0   15              17 w 1          
+001   10      TEAM003BOARD2, Test               2076 FID                         0.0   38              18 b 0          
+001   11      TEAM003BOARD3, Test               2051 FID                         1.0   15              19 w 1          
+001   12      TEAM003BOARD4, Test               2027 FID                         1.0   15              20 b +          
+001   13      TEAM004BOARD1, Test               2003 FID                         2.0    3    25 b 1     5 w 0    37 w 1
+001   14      TEAM004BOARD2, Test               1978 FID                         0.5   35    26 w 0     6 b 0    38 b =
+001   15      TEAM004BOARD3, Test               1954 FID                         1.0   15    27 b 1     7 w 0    39 w 0
+001   16      TEAM004BOARD4, Test               1929 FID                         2.5    2    28 w =     8 b +    40 b +
+001   17      TEAM005BOARD1, Test               1905 FID                         1.0   15    29 w 1     9 b 0     5 b 0
+001   18      TEAM005BOARD2, Test               1881 FID                         2.0    3    30 b 1    10 w 1     6 w 0
+001   19      TEAM005BOARD3, Test               1856 FID                         1.0   15    31 w 1    11 b 0     7 b 0
+001   20      TEAM005BOARD4, Test               1832 FID                         1.0   15    32 b 1    12 w -     8 w -
+001   21      TEAM006BOARD1, Test               1808 FID                         1.0   15     5 b 0     1 w 0    29 w 1
+001   22      TEAM006BOARD2, Test               1783 FID                         1.0   15     6 w =     2 b 0    30 b =
+001   23      TEAM006BOARD3, Test               1759 FID                         0.0   38     7 b 0     3 w 0    31 w 0
+001   24      TEAM006BOARD4, Test               1734 FID                         2.0    3     8 w 0     4 b +    32 b +
+001   25      TEAM007BOARD1, Test               1710 FID                         0.5   35    13 w 0    37 b =     1 b 0
+001   26      TEAM007BOARD2, Test               1686 FID                         2.0    3    14 b 1    38 w 1     2 w 0
+001   27      TEAM007BOARD3, Test               1661 FID                         1.0   15    15 w 0    39 b 1     3 b 0
+001   28      TEAM007BOARD4, Test               1637 FID                         0.5   35    16 b =    40 w -     4 w -
+001   29      TEAM008BOARD1, Test               1613 FID                         1.0   15    17 b 0    33 w 1    21 b 0
+001   30      TEAM008BOARD2, Test               1588 FID                         1.0   15    18 w 0    34 b 1    22 w 0
+001   31      TEAM008BOARD3, Test               1564 FID                         0.0   38    19 b 0    35 w 0    23 b 0
+001   32      TEAM008BOARD4, Test               1540 FID                         1.0   15    20 w 0    36 b +    24 w -
+001   33      TEAM009BOARD1, Test               1515 FID                         0.0   15              29 b 0  0000 - U
+001   34      TEAM009BOARD2, Test               1491 FID                         0.0   15              30 w 0  0000 - U
+001   35      TEAM009BOARD3, Test               1466 FID                         1.0    3              31 b 1  0000 - U
+001   36      TEAM009BOARD4, Test               1442 FID                         0.0   15              32 w -  0000 - U
+001   37      TEAM010BOARD1, Test               1418 FID                         0.5   13  0000 - U    25 w =    13 b 0
+001   38      TEAM010BOARD2, Test               1393 FID                         0.0   15  0000 - U    26 b 0    14 w 0
+001   39      TEAM010BOARD3, Test               1369 FID                         0.0   15  0000 - U    27 w 0    15 b 0
+001   40      TEAM010BOARD4, Test               1345 FID                         1.0    3  0000 - U    28 b +    16 w -
+
+310   1 Team001                          TEAM0      0    4.0    5.5   4     1    2    3    4
+310   2 Team002                          TEAM1      0    6.0    9.0   1     5    6    7    8
+310   3 Team003                          TEAM2      0    4.0    7.0   2     9   10   11   12
+310   4 Team004                          TEAM3      0    4.0    6.0   3    13   14   15   16
+310   5 Team005                          TEAM4      0    2.0    5.0   5    17   18   19   20
+310   6 Team006                          TEAM5      0    2.0    4.0   7    21   22   23   24
+310   7 Team007                          TEAM6      0    2.0    4.0   6    25   26   27   28
+310   8 Team008                          TEAM7      0    2.0    3.0   9    29   30   31   32
+310   9 Team009                          TEAM8      0    1.0    3.0   9    33   34   35   36
+310  10 Team010                          TEAM9      0    1.0    3.5   8    37   38   39   40
+
+240 F   1    3
+240 Z   1    1    9
+240 Z   3    3
+240 F   4    2    5
+
+320  1.0  2.0  10       9
+
+300   1   2   6    5    6    7    8
+300   1   6   2   21   22   23   24
+300   1   5   8   17   18   19   20
+300   1   8   5   29   30   31   32
+300   1   7   4   25   26   27   28
+300   1   4   7   13   14   15   16
+300   2   3   5    9   10   11   12
+300   2   5   3   17   18   19   20
+300   2   4   2   13   14   15   16
+300   2   2   4    5    6    7    8
+300   2  10   7   37   38   39   40
+300   2   7  10   25   26   27   28
+300   2   6   1   21   22   23   24
+300   2   1   6    1    2    3    4
+300   2   8   9   29   30   31   32
+300   2   9   8   33   34   35   36
+300   3   2   5    5    6    7    8
+300   3   5   2   17   18   19   20
+300   3   1   7    1    2    3    4
+300   3   7   1   25   26   27   28
+300   3   4  10   13   14   15   16
+300   3  10   4   37   38   39   40
+300   3   6   8   21   22   23   24
+300   3   8   6   29   30   31   32
+
+

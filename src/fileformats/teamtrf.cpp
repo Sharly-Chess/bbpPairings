@@ -471,6 +471,13 @@ namespace fileformats
         teamCount,
         std::vector<tournament::MatchScore>(
           rounds, tournament::MATCH_SCORE_LOSS));
+      // Whether the team forfeited the whole match, either way: every board of
+      // it went the same way without being played. Boards forfeited each way
+      // are not that, and the match result is still their game points.
+      std::vector<std::vector<bool>> wholeMatchForfeitWin(
+        teamCount, std::vector<bool>(rounds, false));
+      std::vector<std::vector<bool>> wholeMatchForfeitLoss(
+        teamCount, std::vector<bool>(rounds, false));
 
       for (tournament::player_index t = 0; t < teamCount; ++t)
       {
@@ -507,6 +514,14 @@ namespace fileformats
           // win, not as a pairing-allocated bye (the "0000" opponent otherwise
           // collapses to the member's own id, which getPoints scores as a PAB).
           tournament::points gp = 0u;
+          // §1.6.1 asks whether the *match* was actually played, which it was
+          // as soon as one board was, however many others were forfeited.
+          bool anyBoardPlayed = false;
+          // A match the team forfeited outright, as against one where single
+          // boards were forfeited each way: every board went the same way
+          // without being played.
+          bool everyBoardForfeitWin = hasOpponent;
+          bool everyBoardForfeitLoss = hasOpponent;
           for (const tournament::player_index m : members)
           {
             if (m >= member.players.size())
@@ -519,6 +534,23 @@ namespace fileformats
               continue;
             }
             const tournament::Match &mm = mp.matches[r];
+            if (mm.gameWasPlayed)
+            {
+              anyBoardPlayed = true;
+            }
+            else if (mm.matchScore == tournament::MATCH_SCORE_WIN)
+            {
+              everyBoardForfeitLoss = false;
+            }
+            else if (mm.matchScore == tournament::MATCH_SCORE_LOSS)
+            {
+              everyBoardForfeitWin = false;
+            }
+            else
+            {
+              everyBoardForfeitWin = false;
+              everyBoardForfeitLoss = false;
+            }
             if (hasOpponent
                   && mm.matchScore == tournament::MATCH_SCORE_WIN
                   && !mm.gameWasPlayed
@@ -540,12 +572,15 @@ namespace fileformats
             if (r < b1.matches.size())
             {
               const tournament::Match &m0 = b1.matches[r];
-              board1Played[t][r] = m0.gameWasPlayed;
+              board1Played[t][r] = hasOpponent && anyBoardPlayed;
+              wholeMatchForfeitWin[t][r] = !anyBoardPlayed && everyBoardForfeitWin;
+              wholeMatchForfeitLoss[t][r] =
+                !anyBoardPlayed && everyBoardForfeitLoss;
               board1Participated[t][r] = m0.participatedInPairing;
               board1Score[t][r] = m0.matchScore;
-              board1Colour[t][r] = m0.gameWasPlayed
-                ? m0.color
-                : tournament::COLOR_NONE;
+              // The colour board 1 was *scheduled* to play, which §1.6.1 counts
+              // for the team whether or not that board's own game went ahead.
+              board1Colour[t][r] = m0.color;
             }
           }
         }
@@ -587,6 +622,10 @@ namespace fileformats
         matches.reserve(rounds);
         long matchPointTotal = 0;
         long gamePointTotal = 0;
+        std::vector<tournament::points> secondaryByRound;
+        secondaryByRound.reserve(rounds);
+        std::vector<tournament::points> primaryByRound;
+        primaryByRound.reserve(rounds);
 
         for (tournament::round_index r = 0; r < rounds; ++r)
         {
@@ -661,7 +700,17 @@ namespace fileformats
               declaredBye == U'F' ? static_cast<long>(pointsForTeamWin)
                 : declaredBye == U'H' ? static_cast<long>(pointsForTeamDraw)
                 : static_cast<long>(pointsForTeamLoss);
-            defaultGp = rawGp;
+            // No board was played, so the boards score what record 162 gives
+            // the bye: a full-point bye is W and a half-point bye D, per board,
+            // that record being "valid also for game points in team
+            // competitions". A zero-point bye is A, which is nil.
+            defaultGp =
+              static_cast<long>(rosters[t].members.size())
+                * (declaredBye == U'F'
+                      ? static_cast<long>(member.pointsForWin)
+                      : declaredBye == U'H'
+                        ? static_cast<long>(member.pointsForDraw)
+                        : 0L);
           }
           else if (forfeitApplies)
           {
@@ -695,16 +744,17 @@ namespace fileformats
             if (board1Score[t][r] == tournament::MATCH_SCORE_WIN
                   && board1Participated[t][r])
             {
-              // U: pairing-allocated bye (not a 299 type; scored as a draw/§1.4).
-              // Game points default to a drawn match (boards x game-draw points)
-              // unless a 320 record specifies them.
+              // U: pairing-allocated bye. Its match points are a draw (§1.4),
+              // and its game points are what record 162 gives P, "same as W",
+              // per board -- the two are separate quantities. A 320 record
+              // states either outright.
               type = U'P';
               matchScore = tournament::MATCH_SCORE_WIN;
               defaultMp = static_cast<long>(pabMatchPointsResolved);
               defaultGp = pab320Gp
                 ? static_cast<long>(pabGamePoints)
                 : static_cast<long>(rosters[t].members.size())
-                    * static_cast<long>(member.pointsForDraw);
+                    * static_cast<long>(member.pointsForWin);
             }
             else if (board1Score[t][r] == tournament::MATCH_SCORE_WIN)
             {
@@ -725,10 +775,12 @@ namespace fileformats
               defaultMp = static_cast<long>(pointsForTeamLoss);
             }
           }
-          else if (!played)
+          else if (
+            !played
+              && (wholeMatchForfeitWin[t][r] || wholeMatchForfeitLoss[t][r]))
           {
-            // Unplayed match against a real opponent: a team forfeit.
-            if (board1Score[t][r] == tournament::MATCH_SCORE_WIN)
+            // The whole match was forfeited one way: a team forfeit.
+            if (wholeMatchForfeitWin[t][r])
             {
               type = U'+';
               matchScore = tournament::MATCH_SCORE_WIN;
@@ -743,7 +795,9 @@ namespace fileformats
           }
           else
           {
-            // Over-the-board match: result by game-point comparison.
+            // The match result is the game-point comparison. Boards forfeited
+            // each way still score as boards, so a match nobody played over
+            // the board can still be drawn or lost on them.
             const long gpO = static_cast<long>(gamePoints[opp][r]);
             if (rawGp > gpO)
             {
@@ -751,8 +805,10 @@ namespace fileformats
               matchScore = tournament::MATCH_SCORE_WIN;
               defaultMp = static_cast<long>(pointsForTeamWin);
             }
-            else if (rawGp < gpO)
+            else if (rawGp < gpO || rawGp <= 0)
             {
+              // A draw needs a point on each side: a match neither team
+              // scored in is lost by both.
               type = U'L';
               matchScore = tournament::MATCH_SCORE_LOSS;
               defaultMp = static_cast<long>(pointsForTeamLoss);
@@ -853,6 +909,14 @@ namespace fileformats
 
           matchPointTotal += mp;
           gamePointTotal += gp;
+          secondaryByRound.push_back(
+            config.primaryScore == swisssystems::ScoreChoice::MATCH_POINTS
+              ? gp
+              : mp);
+          primaryByRound.push_back(
+            config.primaryScore == swisssystems::ScoreChoice::MATCH_POINTS
+              ? mp
+              : gp);
         }
 
         // If the team requested a bye (240) for the round being paired, append a
@@ -890,6 +954,12 @@ namespace fileformats
         tournament::Player team(t, primary, 0u, std::move(matches));
         team.secondaryScore =
           config.useSecondaryForColour ? secondary : 0u;
+        if (config.useSecondaryForColour)
+        {
+          team.secondaryScoreByRound = std::move(secondaryByRound);
+        }
+        // The primary score's rounds are wanted whatever decides the colours.
+        team.primaryScoreByRound = std::move(primaryByRound);
         teams.players.push_back(std::move(team));
         teams.playersByRank.push_back(t);
       }

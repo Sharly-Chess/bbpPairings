@@ -215,8 +215,13 @@ namespace tournament
           {
             player.matches.push_back(match);
           }
+          // A team's score is in the primary basis its competition chose,
+          // which getPoints, answering in match points, does not know.
+          const std::vector<points> &byRound = player.primaryScoreByRound;
           player.scoreWithoutAcceleration +=
-            tournament.getPoints(player, match);
+            tournament.playedRounds < byRound.size()
+              ? byRound[tournament.playedRounds]
+              : tournament.getPoints(player, match);
         }
       }
     }
