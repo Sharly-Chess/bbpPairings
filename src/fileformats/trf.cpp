@@ -615,7 +615,7 @@ namespace fileformats
           {
             tournament.pointsForLoss = score;
           }
-          else if (resultChar == U'A' || resultChar == U'Z')
+          else if (resultChar == U'Z' || resultChar == U'A')
           {
             // Absence: zero-point-bye or forfeit loss. TRF-2026 uses 'A'; 'Z' is
             // the legacy TRF(x)/JaVaFo code, accepted for backwards compatibility.
