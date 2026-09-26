@@ -91,6 +91,20 @@ TESTS = tests
 TEST_SOURCES = $(shell find $(TESTS) -name "*.cpp")
 TEST_IDS = $(patsubst $(TESTS)/%.cpp, %, $(TEST_SOURCES))
 
+# One command per line: the Windows shell cuts a command line at 8191
+# characters.
+define newline
+
+
+endef
+
+define include_test
+echo "#define TEST_ID $(1)" >> $@
+echo "#include <tests/$(1).cpp>" >> $@
+echo "#undef TEST_ID" >> $@
+
+endef
+
 .DELETE_ON_ERROR:
 
 all: bbpPairingsTests.exe
@@ -98,17 +112,12 @@ all: bbpPairingsTests.exe
 
 test-includes.h: $(TESTS)
 	echo > $@
-	$(foreach \
-		test_id, \
-		$(TEST_IDS), \
-		echo "#define TEST_ID $(test_id)" >> $@; \
-			echo "#include <tests/$(test_id).cpp>" >> $@; \
-			echo "#undef TEST_ID" >> $@;)
+	$(foreach test_id, $(TEST_IDS), $(call include_test,$(test_id)))
 	echo >> $@
 	echo "int runTests(const testing::Context &context)" >> $@
 	echo { >> $@
 	echo "  BEFORE_RUNNING_TESTS" >> $@
-	$(foreach test_id, $(TEST_IDS), echo "  RUN_TEST($(test_id))" >> $@;)
+	$(foreach test_id, $(TEST_IDS), echo "  RUN_TEST($(test_id))" >> $@$(newline))
 	echo "  AFTER_RUNNING_TESTS" >> $@
 	echo } >> $@
 
