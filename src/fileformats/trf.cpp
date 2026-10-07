@@ -526,7 +526,7 @@ namespace fileformats
       }
 
       /**
-       * Process a 260 line.
+       * Process a 260 line, or an SCS line, which shares its layout.
        */
       tournament::ForbiddenPairsEntry readForbiddenPairs260(
         const std::u32string &line)
@@ -1133,6 +1133,11 @@ namespace fileformats
               else if (prefix == U"260")
               {
                 result.forbiddenPairs.push_back(readForbiddenPairs260(line));
+              }
+              else if (prefix == U"SCS")
+              {
+                result.softForbiddenPairs.push_back(
+                  readForbiddenPairs260(line));
               }
               else if (prefix == U"XXP")
               {

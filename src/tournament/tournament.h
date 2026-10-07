@@ -382,6 +382,14 @@ namespace tournament
 #endif
     bool defaultAcceleration = true;
     std::deque<ForbiddenPairsEntry> forbiddenPairs;
+    /**
+     * Sharly Chess: pairs to avoid as the lowest-priority quality criterion
+     * (SCS records), and those of them that apply to the round to pair,
+     * indexed like resolveForbiddenPairs (empty when none apply). The latter
+     * is set by computePlayerData.
+     */
+    std::deque<ForbiddenPairsEntry> softForbiddenPairs;
+    std::vector<std::unordered_set<player_index>> currentSoftForbiddenPairs;
     /** Abnormal points assignments from TRF-2026 record 299. */
     std::vector<AbnormalAssignment> abnormalAssignments;
 

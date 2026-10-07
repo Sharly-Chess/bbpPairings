@@ -1,0 +1,19 @@
+012 SCS soft forbidden pairs, colours first
+152 W
+142 3
+192 FIDE_TEAM_TYPEB_MP_GP
+362 TW  2.0   TD  1.0   TL  0.0
+SCS   2   2    1    4
+SCS   2   2    2    3
+001    1      P1                                2500                             0.5    1     5 w =
+001    2      P2                                2500                             0.5    2     6 b =
+001    3      P3                                2500                             0.5    3     7 w =
+001    4      P4                                2500                             0.5    4     8 b =
+001    5      P5                                2500                             0.5    5     1 b =
+001    6      P6                                2500                             0.5    6     2 w =
+001    7      P7                                2500                             0.5    7     3 b =
+001    8      P8                                2500                             0.5    8     4 w =
+310 1   Alpha                                                               1    2
+310 2   Bravo                                                               3    4
+310 3   Charlie                                                             5    6
+310 4   Delta                                                               7    8

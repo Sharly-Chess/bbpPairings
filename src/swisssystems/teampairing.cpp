@@ -5,6 +5,7 @@
 #include <list>
 #include <ostream>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -312,6 +313,7 @@ namespace swisssystems
        *   [C8]       : minimise unfulfilled colour preferences
        *   [C9]       : (Type B) minimise unfulfilled strong colour preferences
        *   [C10]      : minimise upfloaters' opponents that floated last round
+       *   soft       : (only with SCS records) minimise soft forbidden pairs
        *   identifier : §3.6 lexicographic tie-break (prefer low TPNs)
        *
        * Each count field is `fieldBits` wide so the matching's per-field sums
@@ -391,6 +393,16 @@ namespace swisssystems
                   || !wasFloater(resident, 1u, tournament))
                 ? 1u
                 : 0u;
+
+        // Minimise soft forbidden pairs: below every FIDE criterion, ahead of
+        // the §3.6 order.
+        const auto &softForbiddenPairs = tournament.currentSoftForbiddenPairs;
+        if (!softForbiddenPairs.empty())
+        {
+          shiftEdgeWeight<max>(result, fieldBits);
+          result |=
+            max ? 1u : softForbiddenPairs[a.id].count(b.id) ? 0u : 1u;
+        }
 
         // §3.6 identifier tie-break, level 1: the lexicographically smallest
         // identifier puts the smallest-TPN teams as pair "tops" (§3.6.1-2; the
@@ -698,6 +710,26 @@ namespace swisssystems
             }
             return x->rankIndex < y->rankIndex;
           });
+      }
+
+      /**
+       * The number of pairs that are soft forbidden.
+       */
+      std::size_t countSoftForbidden(
+        const PairList &pairs,
+        const tournament::Tournament &tournament)
+      {
+        const auto &softForbiddenPairs = tournament.currentSoftForbiddenPairs;
+        if (softForbiddenPairs.empty())
+        {
+          return 0u;
+        }
+        std::size_t result{ };
+        for (const auto &pair : pairs)
+        {
+          result += softForbiddenPairs[pair.first->id].count(pair.second->id);
+        }
+        return result;
       }
 
       /**
@@ -1149,6 +1181,7 @@ namespace swisssystems
             bool found = false;
             std::size_t bestC6{ };
             std::size_t bestC7{ };
+            std::size_t bestSoft{ };
             for (
               const TeamList &set : upfloaterSets(lower, profile, tournament))
             {
@@ -1193,15 +1226,22 @@ namespace swisssystems
                   : 1u;
               const std::size_t c7 =
                 countC7(set, skipFloatHistory, tournament);
-              if (!found || c6 < bestC6 || (c6 == bestC6 && c7 < bestC7))
+              // Soft forbidden pairs rank below [C6] and [C7], ahead of the
+              // order of §3.5.4.
+              const std::size_t soft =
+                countSoftForbidden(bracketPairs, tournament);
+              if (
+                !found
+                  || std::tie(c6, c7, soft) < std::tie(bestC6, bestC7, bestSoft))
               {
                 found = true;
                 bestC6 = c6;
                 bestC7 = c7;
+                bestSoft = soft;
                 *chosen = set;
                 *pairs = bracketPairs;
               }
-              if (!bestC6 && !bestC7)
+              if (!bestC6 && !bestC7 && !bestSoft)
               {
                 break; // §3.5.5, the first such set
               }

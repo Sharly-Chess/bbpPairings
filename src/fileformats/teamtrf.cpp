@@ -604,10 +604,12 @@ namespace fileformats
       teams.swissSystem = swisssystems::TEAM;
       teams.teamConfig = config;
       teams.defaultAcceleration = false;
-      // Pairing restrictions (260 "teams that cannot meet", and XXP) are parsed
-      // by the member reader as team-pairing-number entries; they apply directly
-      // to the team tournament (a team's index equals its TPN minus one).
+      // Pairing restrictions (260 "teams that cannot meet", XXP and SCS) are
+      // parsed by the member reader as team-pairing-number entries; they apply
+      // directly to the team tournament (a team's index equals its TPN minus
+      // one).
       teams.forbiddenPairs = member.forbiddenPairs;
+      teams.softForbiddenPairs = member.softForbiddenPairs;
 
       const std::vector<tournament::AbnormalAssignment> &abnormals =
         member.abnormalAssignments;

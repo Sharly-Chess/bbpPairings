@@ -91,6 +91,22 @@ namespace tournament
           !player.absoluteColorPreference() && player.colorImbalance;
       }
     }
+
+    // Sharly Chess: the soft forbidden pairs of the round to pair.
+    currentSoftForbiddenPairs.clear();
+    for (const auto &entry : softForbiddenPairs)
+    {
+      if (playedRounds < entry.roundStart || playedRounds >= entry.roundEnd)
+      {
+        continue;
+      }
+      currentSoftForbiddenPairs.resize(players.size());
+      for (const auto playerIndex : entry.players)
+      {
+        currentSoftForbiddenPairs[playerIndex]
+          .insert(entry.players.begin(), entry.players.end());
+      }
+    }
   }
 
   /**

@@ -459,6 +459,19 @@ namespace swisssystems
           }
         }
 
+        // Sharly Chess: maximize the pairs in the current bracket that are not
+        // soft forbidden (SCS records). Below every FIDE criterion, this only
+        // chooses among pairings the rules rank equally.
+        if (!tournament.currentSoftForbiddenPairs.empty())
+        {
+          shiftEdgeWeight<max>(result, scoreGroupSizeBits);
+          result |=
+            !max
+              && lowerPlayerInCurrentBracket
+              && !tournament.currentSoftForbiddenPairs[higherPlayer.id]
+                    .count(lowerPlayer.id);
+        }
+
         // Leave room for enforcing the ordering requirements for pairing
         // heterogeneous and homogeneous brackets.
         shiftEdgeWeight<max>(result, scoreGroupSizeBits);
