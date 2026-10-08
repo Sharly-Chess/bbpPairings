@@ -1,8 +1,34 @@
 BBP Pairings
 Copyright 2016-2026 Jeremy Bierema.
 
+Sharly Chess modifications
+Copyright 2025-2026 the Sharly Chess team.
+
 The source code of BBP Pairings is released under the Apache License,
 Version 2.0. The full text of the license can be found in Apache-2.0.txt.
+
+The Sharly Chess team's modifications (including, but not limited to, team
+pairing support and soft-pairing protection) are also released under the
+Apache License, Version 2.0, subject to the following additional condition, as
+permitted by Section 4 of that license:
+
+  Attribution. Any software or service that incorporates, links to, invokes or
+  otherwise makes use of this version of BBP Pairings, or any work derived from
+  it, must display the following notice in a place where its users can
+  reasonably be expected to see it (for example, an "About" screen, a credits
+  page or the program's documentation, and alongside any generated pairings
+  where such credits normally appear):
+
+    Pairings computed by a version of BBP Pairings adapted by the Sharly Chess
+    team to add team pairing support and soft-pairing protection.
+    <https://github.com/Sharly-Chess/bbpPairings>
+
+  The notice may be translated, but its meaning must be preserved. This
+  condition does not apply to code taken solely from the original BBP Pairings
+  project, which remains available under the plain Apache License, Version 2.0.
+
+The contents of NOTICE.txt must also be distributed with any copy or
+derivative of this version, as required by Section 4(d) of the Apache License.
 
 In each official build, any additional licensing terms that may apply to that
 build will be added here:

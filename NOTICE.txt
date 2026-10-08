@@ -1,0 +1,9 @@
+BBP Pairings - Sharly Chess edition
+
+Version of BBP Pairings adapted by the Sharly Chess team to add team pairing
+support and soft-pairing protection.
+<https://github.com/Sharly-Chess/bbpPairings>
+
+Based on BBP Pairings by Bierema Boyz Programming.
+Copyright 2016-2026 Jeremy Bierema.
+<https://github.com/BieremaBoyzProgramming/bbpPairings>
