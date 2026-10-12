@@ -116,8 +116,13 @@ namespace swisssystems
           player.matches[tournament.playedRounds - roundsBack];
         if (!match.gameWasPlayed)
         {
+          // Article 1.4.3: the pairing-allocated bye is a downfloat whatever
+          // it is worth.
+          const bool pairingAllocatedBye =
+            match.opponent == player.id && match.participatedInPairing;
           return
-            tournament.getPoints(player, match) > tournament.pointsForLoss
+            pairingAllocatedBye
+                || tournament.getPoints(player, match) > tournament.pointsForLoss
               ? FLOAT_DOWN
               : FLOAT_NONE;
         }
