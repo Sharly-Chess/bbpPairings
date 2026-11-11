@@ -693,6 +693,74 @@ namespace swisssystems
       // ----- §3.5 Upfloater Selection, §3.6 Bracket Pairing -------------------
 
       typedef std::vector<const tournament::Player *> TeamList;
+      /**
+       * The fewest upfloaters from `lower` with which every resident can be
+       * paired ([C1]), or `lower.size() + 1` when no number will do. A pairing
+       * of a bracket matches each resident either to another resident or to an
+       * upfloater of its own, so a bracket with fewer upfloaters than this
+       * cannot be paired at all. The count comes from one weighted matching
+       * over the residents and `lower` that pairs as many residents as it can
+       * and, among those matchings, as many of them with each other as it can.
+       */
+      std::size_t fewestUpfloaters(
+        const TeamList &residents,
+        const TeamList &lower,
+        const std::vector<std::unordered_set<tournament::player_index>>
+          &forbiddenPairs)
+      {
+        const std::size_t residentCount = residents.size();
+        const std::size_t n = residentCount + lower.size();
+        // Each resident covered is worth `cover`, and a pair of residents is
+        // worth one more than the two it covers, which can never make up for
+        // a resident left out.
+        const std::size_t cover = residentCount + 1u;
+        edge_weight maxWeight{ 2u * cover + 1u };
+        matching_computer computer(n, maxWeight);
+        for (std::size_t i = 0; i < n; ++i)
+        {
+          computer.addVertex();
+        }
+        const auto team =
+          [&residents, &lower, residentCount](const std::size_t index)
+          {
+            return index < residentCount
+              ? residents[index]
+              : lower[index - residentCount];
+          };
+        for (std::size_t i = 0; i < residentCount; ++i)
+        {
+          for (std::size_t j = 0; j < n; ++j)
+          {
+            if (j == i || (j < residentCount && j < i))
+            {
+              continue;
+            }
+            edge_weight w{ maxWeight };
+            w &= 0u;
+            if (!forbiddenPairs[team(i)->id].count(team(j)->id))
+            {
+              w |= j < residentCount ? 2u * cover + 1u : cover;
+            }
+            computer.setEdgeWeight(i, j, w);
+          }
+        }
+        computer.computeMatching();
+        const std::vector<tournament::player_index> matching =
+          computer.getMatching();
+        std::size_t upfloaters{ };
+        for (std::size_t i = 0; i < residentCount; ++i)
+        {
+          if (matching[i] == i)
+          {
+            return lower.size() + 1u;
+          }
+          if (matching[i] >= residentCount)
+          {
+            ++upfloaters;
+          }
+        }
+        return upfloaters;
+      }
       typedef
         std::vector<
           std::pair<const tournament::Player *, const tournament::Player *>>
@@ -1137,8 +1205,9 @@ namespace swisssystems
       /**
        * §3.5: choose the upfloaters that join `residents`, and pair the bracket
        * they form. [C4] (§2.3.1, the fewest upfloaters) and [C5] are the outer
-       * loops: the number grows from the fewest the parity of the residents
-       * allows, and for each number the score profiles are tried best first. A
+       * loops: the number grows from the fewest the residents can be paired
+       * with at all (fewestUpfloaters), and for each number the score profiles
+       * are tried best first. A
        * number or a profile no set of which gives a legal pairing is no
        * candidate at all, since [C3] (§2.2.1) asks that all the teams not yet
        * paired can be, so the search falls through to the next one.
@@ -1177,8 +1246,12 @@ namespace swisssystems
         const tournament::points followingScore =
           hasFollowing ? scoreOf(*lower.front(), tournament) : residentScore;
 
+        // [C4]: every number below the fewest the residents can be paired
+        // with leaves every set unpairable, and the search would only find
+        // that out set by set. The fewest has the parity of the residents.
         for (
-          std::size_t numup = residents.size() & 1u;
+          std::size_t numup =
+            fewestUpfloaters(residents, lower, forbiddenPairs);
           numup <= lower.size();
           numup += 2u)
         {
