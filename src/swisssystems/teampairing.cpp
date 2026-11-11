@@ -1340,12 +1340,32 @@ namespace swisssystems
             }
             if (
               std::tie(c6Bound, c7Bound) == std::tie(best.c6, best.c7)
-                && !(match(true) < best.soft))
+                && !(leastSoft() < best.soft))
             {
               return false;
             }
           }
-          return match(false) <= size - chosenCount;
+          return cost(0u, 1u) <= size - chosenCount;
+        }
+
+        /**
+         * A lower bound on the soft forbidden pairs of the bracket of any
+         * legal completion. Such a completion pairs all of `teams` within the
+         * rules of cost(), with at most `places` resident or chosen teams
+         * meeting a team that can still be chosen, and its bracket holds every
+         * soft pair that touches a resident or chosen team. So the fewest such
+         * pairs over every pairing within those rules is a bound, and so is,
+         * by weak duality, the fewest of those pairs plus the number of
+         * resident and chosen teams meeting a team still to be chosen, less
+         * `places`. The first is the better one when places are plentiful,
+         * the second when they are scarce.
+         */
+        std::size_t leastSoft() const
+        {
+          const std::size_t places = size - chosenCount;
+          const std::size_t withPlaces = cost(1u, 1u);
+          const std::size_t dual = withPlaces > places ? withPlaces - places : 0u;
+          return dual >= best.soft ? dual : std::max(dual, cost(1u, 0u));
         }
 
         /**
@@ -1418,26 +1438,50 @@ namespace swisssystems
         }
 
         /**
-         * A maximum weight matching of all of `teams` in which a resident or
-         * chosen team meets only another of them or a team that can still be
-         * chosen ([C1] throughout). Without `soft`, it says how few of the
-         * latter they can do with; with it, how few soft forbidden pairs
-         * the bracket can be left with. Returns `size + 1` (more than any
-         * set has places) when `teams` cannot be paired that way at all.
+         * The least total cost of a pairing of all of `teams` in which a
+         * resident or chosen team meets only another of them or a team that
+         * can still be chosen ([C1] throughout). A soft forbidden pair that
+         * touches a resident or chosen team costs `softCost`, and a resident or
+         * chosen team meeting a team still to be chosen costs `placeCost`.
+         * Returns more than any count it is compared with when `teams` cannot
+         * be paired that way at all.
          */
-        std::size_t match(const bool soft) const
+        std::size_t cost(
+          const std::size_t softCost,
+          const std::size_t placeCost) const
         {
           const std::size_t n = teams.size();
           const auto &softForbiddenPairs = tournament.currentSoftForbiddenPairs;
-          // Each pair is worth `pair`, and one more when it is not one of the
-          // pairs being minimised, which can never make up for a pair lost.
-          const std::size_t pair = n + 1u;
-          edge_weight maxWeight{ pair + 1u };
+          // Each pair is worth `pair` less its cost, and the costs of a whole
+          // pairing add up to less than `pair`, so no saving in cost can make
+          // up for a pair lost.
+          const std::size_t most = softCost + placeCost;
+          const std::size_t pair = n * most + 1u;
+          edge_weight maxWeight{ pair };
           matching_computer computer(n, maxWeight);
           for (std::size_t i = 0; i < n; ++i)
           {
             computer.addVertex();
           }
+          const auto edgeCost =
+            [&](const std::size_t i, const std::size_t j)
+            {
+              const bool iCore = state[i] == CORE;
+              const bool jCore = state[j] == CORE;
+              std::size_t result{ };
+              if (
+                (iCore || jCore)
+                  && !softForbiddenPairs.empty()
+                  && softForbiddenPairs[teams[i]->id].count(teams[j]->id))
+              {
+                result += softCost;
+              }
+              if (iCore != jCore)
+              {
+                result += placeCost;
+              }
+              return result;
+            };
           for (std::size_t i = 0; i < n; ++i)
           {
             for (std::size_t j = 0; j < i; ++j)
@@ -1451,46 +1495,28 @@ namespace swisssystems
               {
                 continue;
               }
-              const bool counted =
-                soft
-                  ? (iCore || jCore)
-                      && !softForbiddenPairs.empty()
-                      && softForbiddenPairs[teams[i]->id].count(teams[j]->id)
-                  : iCore != jCore;
               edge_weight w{ maxWeight };
               w &= 0u;
-              w |= counted ? pair : pair + 1u;
+              w |= pair - edgeCost(i, j);
               computer.setEdgeWeight(i, j, w);
             }
           }
           computer.computeMatching();
           const std::vector<tournament::player_index> matching =
             computer.getMatching();
-          std::size_t count{ };
+          std::size_t total{ };
           for (std::size_t i = 0; i < n; ++i)
           {
             if (matching[i] == i)
             {
-              return size + 1u;
+              return n * most + size + 1u;
             }
-            const std::size_t j = matching[i];
-            if (soft)
+            if (matching[i] < i)
             {
-              if (
-                j < i
-                  && (state[i] == CORE || state[j] == CORE)
-                  && !softForbiddenPairs.empty()
-                  && softForbiddenPairs[teams[i]->id].count(teams[j]->id))
-              {
-                ++count;
-              }
-            }
-            else if (state[i] == CORE && state[j] != CORE)
-            {
-              ++count;
+              total += edgeCost(i, matching[i]);
             }
           }
-          return count;
+          return total;
         }
       };
 
