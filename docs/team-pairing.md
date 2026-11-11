@@ -130,6 +130,17 @@ Key structural differences from C.04.3 (Dutch, individuals):
 > stops at the first set that is legal and complies with `[C6]` and `[C7]`, which is usually the
 > first one tried.
 >
+> When most sets fail, as under a 260 record that keeps the whole top scoregroup apart, a plain
+> walk through the sets is exponential, so the walk skips what cannot matter without changing
+> its order. The number of upfloaters starts at the fewest that can meet every resident
+> (`fewestUpfloaters`, one weighted matching), since fewer leave a resident unpaired.
+> `UpfloaterSearch` then chooses a set's teams one at a time in §3.5.4 order and drops a partial
+> choice when no completion of it can be legal (a matching of all the teams left, residents and
+> chosen teams meeting only each other or teams still available, with no more of the latter than
+> places left) or can do strictly better than the best set found (lower bounds on `[C6]`, `[C7]`
+> and the soft forbidden pairs). Every set skipped is one the plain walk would have rejected or
+> not preferred, so the set chosen is the same.
+>
 > Within a bracket, §3.6 is defined as enumerate-sort-pick, and `pairBracket` reuses the blossom
 > matcher with lexicographic edge weights instead: `[C1]` is hard (a played pair weighs nothing,
 > and a pair taken anyway is rejected), `[C8]`/`[C9]`/`[C10]` compliance is maximised, and the
