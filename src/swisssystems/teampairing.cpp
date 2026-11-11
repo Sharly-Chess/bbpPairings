@@ -1098,31 +1098,44 @@ namespace swisssystems
       }
 
       /**
-       * The sets of upfloaters with a given score profile that can make a
-       * legal bracket, in the order of §3.5.3 (within a set: descending
-       * score, then ascending TPN) and §3.5.4 (among the sets: the
-       * lexicographic order of their TPNs). Every set that could be legal
-       * comes out, in that order; only sets that cannot are skipped.
+       * The best set found so far for one profile, by [C6], [C7] and then the
+       * soft forbidden pairs. A later set replaces it only when it does
+       * strictly better, so §3.5.4 settles the ties.
+       */
+      struct BestSet
+      {
+        bool found = false;
+        std::size_t c6{ };
+        std::size_t c7{ };
+        std::size_t soft{ };
+      };
+
+      /**
+       * The sets of upfloaters with a given score profile that could still
+       * be chosen, in the order of §3.5.3 (within a set: descending score,
+       * then ascending TPN) and §3.5.4 (among the sets: the lexicographic
+       * order of their TPNs). Only sets that cannot be legal, or cannot do
+       * strictly better than `best`, are skipped, so the set selectUpfloaters
+       * ends up with is the one a walk through every set would give.
        *
        * A set takes a fixed number of teams from each score level of the
        * profile, highest score first, and every level's teams are in
        * ascending TPN order in `lower`. Choosing the teams of a set one by
        * one in that order, each from the teams after the one chosen before it
-       * at its level, walks the sets in §3.5.4 order, and a choice that
-       * cannot be completed into a legal set cuts off every set that starts
-       * with it. That is what keeps the search small when most sets fail:
-       * when a profile asks for more upfloaters from a level than the
-       * residents may meet there, for instance, the first choice already
-       * fails.
+       * at its level, walks the sets in §3.5.4 order, and a partial choice
+       * every completion of which can be ruled out cuts them all off at once.
+       * Two things rule a completion out:
        *
-       * A set is legal when the bracket it makes and the teams it leaves
-       * below can both be paired completely ([C1], [C3]). If some completion
-       * of a partial choice is legal, the two pairings together pair all of
-       * `remaining`, every resident and chosen team meeting another of them
-       * or a team that can still be chosen, and the teams that can still be
-       * chosen are met by them no more often than there are places left in
-       * the set. canComplete asks one weighted matching for exactly that, so
-       * when it says no, no completion is legal.
+       * - It cannot be legal: the bracket and the teams left below must both
+       *   be paired completely ([C1], [C3]). Then the two pairings together
+       *   pair all of `remaining`, every resident and chosen team meeting
+       *   another of them or a team that can still be chosen, and the teams
+       *   that can still be chosen meet them no more often than there are
+       *   places left in the set. canComplete asks one weighted matching for
+       *   exactly that.
+       * - It cannot beat `best`: lower bounds on [C6], [C7] and the soft
+       *   forbidden pairs of every completion, taken together, are no better
+       *   than what `best` already has.
        */
       class UpfloaterSearch
       {
@@ -1132,23 +1145,32 @@ namespace swisssystems
           const TeamList &remaining,
           const TeamList &lower,
           const std::vector<tournament::points> &profile,
-          const tournament::Tournament &tournament,
+          const bool hasFollowing,
+          const tournament::points followingScore_,
+          const bool skipFloatHistory,
+          const tournament::Tournament &tournament_,
           const std::vector<std::unordered_set<tournament::player_index>>
-            &forbiddenPairs_)
+            &forbiddenPairs_,
+          const BestSet &best_)
           : teams(remaining),
-            state(remaining.size(), EXCLUDED),
+            tournament(tournament_),
             forbiddenPairs(forbiddenPairs_),
-            size(profile.size())
+            best(best_),
+            state(remaining.size(), EXCLUDED),
+            floater(remaining.size(), false),
+            size(profile.size()),
+            followingScore(followingScore_)
         {
           std::unordered_map<const tournament::Player *, std::size_t> position;
           for (std::size_t index = 0; index < teams.size(); ++index)
           {
             position[teams[index]] = index;
+            floater[index] =
+              !skipFloatHistory && wasFloater(*teams[index], 1u, tournament);
           }
           for (const tournament::Player *const team : residents)
           {
             state[position[team]] = CORE;
-            ++coreCount;
           }
           std::size_t start = 0;
           while (start < profile.size())
@@ -1171,6 +1193,14 @@ namespace swisssystems
             levels.push_back(std::move(level));
             start = end;
           }
+
+          // [C6] looks at what is left of the following scoregroup. When the
+          // profile takes nobody from it, that is the whole of it whatever
+          // the set; otherwise it is known once the first level is chosen.
+          followingLevel =
+            hasFollowing && !profile.empty()
+              && profile.front() == followingScore_;
+          c6Bound = hasFollowing && !followingLevel ? leastC6() : 0u;
         }
 
         /**
@@ -1188,7 +1218,7 @@ namespace swisssystems
             }
           }
           TeamList set;
-          return canComplete() ? choose(0u, 0u, 0u, set, visit) : true;
+          return viable(0u) ? choose(0u, 0u, 0u, set, visit) : true;
         }
 
       private:
@@ -1206,13 +1236,19 @@ namespace swisssystems
         };
 
         const TeamList &teams;
-        std::vector<State> state;
+        const tournament::Tournament &tournament;
         const std::vector<std::unordered_set<tournament::player_index>>
           &forbiddenPairs;
+        const BestSet &best;
+        std::vector<State> state;
+        std::vector<bool> floater;
         const std::size_t size;
+        const tournament::points followingScore;
         std::vector<Level> levels;
-        std::size_t coreCount{ };
         std::size_t chosenCount{ };
+        std::size_t chosenFloaters{ };
+        bool followingLevel{ };
+        std::size_t c6Bound{ };
 
         /**
          * Choose the team for slot `slot` of level `level`, from position
@@ -1243,10 +1279,14 @@ namespace swisssystems
                 dropped.push_back(current.group[index]);
               }
             }
+            const std::size_t savedC6Bound = c6Bound;
+            if (level == 0u && followingLevel)
+            {
+              c6Bound = leastC6();
+            }
             const bool go =
-              dropped.empty() || canComplete()
-                ? choose(level + 1u, 0u, 0u, set, visit)
-                : true;
+              viable(level + 1u) ? choose(level + 1u, 0u, 0u, set, visit) : true;
+            c6Bound = savedC6Bound;
             for (const std::size_t team : dropped)
             {
               state[team] = POOL;
@@ -1261,16 +1301,16 @@ namespace swisssystems
           {
             const std::size_t team = current.group[index];
             state[team] = CORE;
-            ++coreCount;
             ++chosenCount;
+            chosenFloaters += floater[team];
             set.push_back(teams[team]);
-            if (canComplete())
+            if (viable(level))
             {
               go = choose(level, slot + 1u, index + 1u, set, visit);
             }
             set.pop_back();
+            chosenFloaters -= floater[team];
             --chosenCount;
-            --coreCount;
             // Every later set passed over this team at this slot.
             state[team] = EXCLUDED;
           }
@@ -1282,16 +1322,115 @@ namespace swisssystems
         }
 
         /**
-         * Whether all of `teams` can be paired with every resident and chosen
-         * team meeting another of them or a team that can still be chosen,
-         * and no more of the latter than there are places left in the set.
+         * Whether some completion of the current choice, whose levels before
+         * `level` are settled, could be legal and do strictly better than
+         * `best`.
          */
-        bool canComplete() const
+        bool viable(const std::size_t level) const
+        {
+          if (best.found)
+          {
+            const std::size_t c7Bound = leastC7(level);
+            if (
+              std::tie(c6Bound, c7Bound) > std::tie(best.c6, best.c7)
+                || (std::tie(c6Bound, c7Bound) == std::tie(best.c6, best.c7)
+                      && !best.soft))
+            {
+              return false;
+            }
+            if (
+              std::tie(c6Bound, c7Bound) == std::tie(best.c6, best.c7)
+                && !(match(true) < best.soft))
+            {
+              return false;
+            }
+          }
+          return match(false) <= size - chosenCount;
+        }
+
+        /**
+         * [C7] counts the chosen teams that floated in the previous round.
+         * Each level still to fill must take, beyond the teams that can still
+         * be chosen there and did not float, as many that did as it still
+         * needs.
+         */
+        std::size_t leastC7(const std::size_t level) const
+        {
+          std::size_t result = chosenFloaters;
+          for (std::size_t index = level; index < levels.size(); ++index)
+          {
+            const Level &current = levels[index];
+            std::size_t taken{ };
+            std::size_t steady{ };
+            for (const std::size_t team : current.group)
+            {
+              if (state[team] == CORE)
+              {
+                ++taken;
+              }
+              else if (state[team] == POOL && !floater[team])
+              {
+                ++steady;
+              }
+            }
+            if (current.take - taken > steady)
+            {
+              result += current.take - taken - steady;
+            }
+          }
+          return result;
+        }
+
+        /**
+         * [C6] for every set that leaves the same teams of the following
+         * scoregroup: those must pair among themselves, with one team from
+         * below when they are odd ([C4] for that scoregroup), and the teams
+         * below must pair too. When even the first part fails, whatever the
+         * teams below, [C6] is not met.
+         */
+        std::size_t leastC6() const
+        {
+          TeamList following;
+          TeamList below;
+          for (std::size_t index = 0; index < teams.size(); ++index)
+          {
+            if (state[index] == CORE)
+            {
+              continue;
+            }
+            const tournament::points score = scoreOf(*teams[index], tournament);
+            if (score == followingScore)
+            {
+              following.push_back(teams[index]);
+            }
+            else if (score < followingScore)
+            {
+              below.push_back(teams[index]);
+            }
+          }
+          if (following.empty())
+          {
+            return 0u; // §2.3.3, the scoregroup is now empty
+          }
+          return fewestUpfloaters(following, below, forbiddenPairs) <= 1u
+            ? 0u
+            : 1u;
+        }
+
+        /**
+         * A maximum weight matching of all of `teams` in which a resident or
+         * chosen team meets only another of them or a team that can still be
+         * chosen ([C1] throughout). Without `soft`, it says how few of the
+         * latter they can do with; with it, how few soft forbidden pairs
+         * the bracket can be left with. Returns `size + 1` (more than any
+         * set has places) when `teams` cannot be paired that way at all.
+         */
+        std::size_t match(const bool soft) const
         {
           const std::size_t n = teams.size();
-          // Each pair is worth `pair`, and one more when both of its teams
-          // are in the bracket already, which can never make up for a pair
-          // lost.
+          const auto &softForbiddenPairs = tournament.currentSoftForbiddenPairs;
+          // Each pair is worth `pair`, and one more when it is not one of the
+          // pairs being minimised, which can never make up for a pair lost.
           const std::size_t pair = n + 1u;
           edge_weight maxWeight{ pair + 1u };
           matching_computer computer(n, maxWeight);
@@ -1312,28 +1451,46 @@ namespace swisssystems
               {
                 continue;
               }
+              const bool counted =
+                soft
+                  ? (iCore || jCore)
+                      && !softForbiddenPairs.empty()
+                      && softForbiddenPairs[teams[i]->id].count(teams[j]->id)
+                  : iCore != jCore;
               edge_weight w{ maxWeight };
               w &= 0u;
-              w |= iCore && jCore ? pair + 1u : pair;
+              w |= counted ? pair : pair + 1u;
               computer.setEdgeWeight(i, j, w);
             }
           }
           computer.computeMatching();
           const std::vector<tournament::player_index> matching =
             computer.getMatching();
-          std::size_t coreFromPool{ };
+          std::size_t count{ };
           for (std::size_t i = 0; i < n; ++i)
           {
             if (matching[i] == i)
             {
-              return false;
+              return size + 1u;
             }
-            if (state[i] == CORE && state[matching[i]] != CORE)
+            const std::size_t j = matching[i];
+            if (soft)
             {
-              ++coreFromPool;
+              if (
+                j < i
+                  && (state[i] == CORE || state[j] == CORE)
+                  && !softForbiddenPairs.empty()
+                  && softForbiddenPairs[teams[i]->id].count(teams[j]->id))
+              {
+                ++count;
+              }
+            }
+            else if (state[i] == CORE && state[j] != CORE)
+            {
+              ++count;
             }
           }
-          return coreFromPool <= size - chosenCount;
+          return count;
         }
       };
 
@@ -1352,7 +1509,7 @@ namespace swisssystems
        * as §2.3 asks ("comply as much as possible ... in descending priority"),
        * as the smallest value of [C7] a legal set of this profile can reach.
        * UpfloaterSearch hands out the sets in that order, leaving out only
-       * those that cannot be legal.
+       * those that cannot be legal or cannot do better than the best so far.
        *
        * `remaining` is the residents and everything still to be paired below
        * them, in §1.2 order.
@@ -1396,12 +1553,18 @@ namespace swisssystems
             const std::vector<tournament::points> &profile :
               upfloaterProfiles(lower, numup, tournament))
           {
-            bool found = false;
-            std::size_t bestC6{ };
-            std::size_t bestC7{ };
-            std::size_t bestSoft{ };
+            BestSet best;
             UpfloaterSearch search(
-              residents, remaining, lower, profile, tournament, forbiddenPairs);
+              residents,
+              remaining,
+              lower,
+              profile,
+              hasFollowing,
+              followingScore,
+              skipFloatHistory,
+              tournament,
+              forbiddenPairs,
+              best);
             search.run([&](const TeamList &set)
             {
               TeamList bracket = residents;
@@ -1450,23 +1613,21 @@ namespace swisssystems
               const std::size_t soft =
                 countSoftForbidden(bracketPairs, tournament);
               if (
-                !found
-                  || std::tie(c6, c7, soft) < std::tie(bestC6, bestC7, bestSoft))
+                !best.found
+                  || std::tie(c6, c7, soft)
+                       < std::tie(best.c6, best.c7, best.soft))
               {
-                found = true;
-                bestC6 = c6;
-                bestC7 = c7;
-                bestSoft = soft;
+                best.found = true;
+                best.c6 = c6;
+                best.c7 = c7;
+                best.soft = soft;
                 *chosen = set;
                 *pairs = bracketPairs;
               }
-              if (!bestC6 && !bestC7 && !bestSoft)
-              {
-                return false; // §3.5.5, the first such set
-              }
-              return true;
+              // §3.5.5, the first such set: none does better.
+              return best.c6 || best.c7 || best.soft;
             });
-            if (found)
+            if (best.found)
             {
               return true;
             }
