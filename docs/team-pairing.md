@@ -172,11 +172,12 @@ Key structural differences from C.04.3 (Dutch, individuals):
 | `362` | match-point values TW/TD/TL — default **2.0 / 1.0 / 0.0**, overridable |
 | `320` | team PAB match/game points + which team got the PAB each round |
 | `299` | abnormal team assignment points — **deferred** (rare) |
-| `300`/`320`(game)/`330`/`801`/`802` | not parsed (alternatives to `001`) |
+| `300` | a team's lineup of a past round in board order: names board 1 for that round (the `310` roster may be in the order of the round to pair) |
+| `320`(game)/`801`/`802` | not parsed (alternatives to `001`) |
 
 **Aggregation (member tournament → team tournament), per round per team:**
 1. game points = Σ member board results (1/=/0, W/D/L unrated, forfeits ±).
-2. team colour = board-1 player's scheduled colour (only if the match was played; §1.6.1).
+2. team colour = board-1 player's scheduled colour (only if the match was played; §1.6.1). Board 1 is the first player of that round's `300` record; without one, the first roster member who took part in the round's pairing, then the first roster member.
 3. opponent team = team of any member's individual opponent.
 4. match points = compare team GP vs opponent GP → W/D/L → TW/TD/TL (§362).
 5. record opponent (forbidden pair), colour history, both scores; mark PAB/forfeit/bye for `[C2]`.

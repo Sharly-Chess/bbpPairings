@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <istream>
 #include <locale>
+#include <map>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -49,6 +50,17 @@ namespace fileformats
         tournament::round_index round;  // zero-based
         tournament::player_index team;  // team pairing number minus one
         char32_t type;                  // U'F' / U'H' / U'Z'
+      };
+
+      // A TRF-2026 record 300: one team's lineup of a past round, in board
+      // order. Only board 1 is kept: it gives the team's colour and the type
+      // of its result that round, and the 310 roster need not start with it,
+      // since a producer may write the 310 in the order of the round to pair.
+      struct TeamLineup
+      {
+        tournament::round_index round;  // zero-based
+        tournament::player_index team;  // team pairing number minus one
+        tournament::player_index board1; // member index, or none when vacant
       };
 
       // A TRF-2026 record 250 team acceleration: fictitious match/game points
@@ -202,6 +214,7 @@ namespace fileformats
       std::vector<TeamForfeit> forfeits;
       std::vector<TeamBye> teamByes;
       std::vector<TeamAccel> teamAccels;
+      std::vector<TeamLineup> lineups;
       swisssystems::TeamConfig config;
       bool sawTeamCode = false;
       tournament::points pointsForTeamWin = 20u;  // 362 defaults: 2.0 / 1.0 / 0.0
@@ -400,6 +413,26 @@ namespace fileformats
           continue;
         }
 
+        if (code == "300")
+        {
+          // Round 5-7, team 9-11, opponent 13-15, then the players in board
+          // order at 17-20, 22-25, ... ("0000" for a vacant board).
+          const std::string roundStr = trim(field(cline, 5u, 3u));
+          const std::string teamStr = trim(field(cline, 9u, 3u));
+          const std::string board1Str = trim(field(cline, 17u, 4u));
+          if (!roundStr.empty() && !teamStr.empty())
+          {
+            const unsigned long board1Id =
+              board1Str.empty() ? 0u : std::stoul(board1Str);
+            lineups.push_back(
+              { static_cast<tournament::round_index>(std::stoul(roundStr) - 1u),
+                static_cast<tournament::player_index>(std::stoul(teamStr) - 1u),
+                static_cast<tournament::player_index>(
+                  board1Id ? board1Id - 1u : ~0ul) });
+          }
+          continue;
+        }
+
         if (code == "352")
         {
           continue; // 352 board colours are implicit from the rosters
@@ -455,6 +488,52 @@ namespace fileformats
       }
 
       const tournament::round_index rounds = member.playedRounds;
+
+      // Board 1 of each team in each past round. A 300 record names it. A
+      // round without one (a bye, or a file that has no 300 records) falls
+      // back to the first roster member who took part in the pairing of that
+      // round, and then to the first roster member.
+      std::map<
+          std::pair<tournament::player_index, tournament::round_index>,
+          tournament::player_index>
+        lineupBoard1;
+      for (const TeamLineup &lineup : lineups)
+      {
+        const auto team = teamOfTpnIndex.find(lineup.team);
+        if (team != teamOfTpnIndex.end()
+              && lineup.board1 < memberToTeam.size()
+              && memberToTeam[lineup.board1] == team->second)
+        {
+          lineupBoard1[{ team->second, lineup.round }] = lineup.board1;
+        }
+      }
+      const auto board1Member =
+        [&lineupBoard1, &rosters, &member](
+          const tournament::player_index t,
+          const tournament::round_index r) -> tournament::player_index
+        {
+          const auto stated = lineupBoard1.find({ t, r });
+          if (stated != lineupBoard1.end())
+          {
+            return stated->second;
+          }
+          const std::vector<tournament::player_index> &members =
+            rosters[t].members;
+          for (const tournament::player_index m : members)
+          {
+            if (m < member.players.size()
+                  && r < member.players[m].matches.size()
+                  && member.players[m].matches[r].participatedInPairing)
+            {
+              return m;
+            }
+          }
+          if (members.empty())
+          {
+            return ~tournament::player_index{ };
+          }
+          return members[0];
+        };
 
       // Pass 2a: per team, per round, the board-1 record and the game points.
       std::vector<std::vector<tournament::points>> gamePoints(
@@ -566,9 +645,11 @@ namespace fileformats
           }
           gamePoints[t][r] = gp;
 
-          if (!members.empty() && members[0] < member.players.size())
+          const tournament::player_index board1 =
+            board1Member(t, r);
+          if (board1 < member.players.size())
           {
-            const tournament::Player &b1 = member.players[members[0]];
+            const tournament::Player &b1 = member.players[board1];
             if (r < b1.matches.size())
             {
               const tournament::Match &m0 = b1.matches[r];
