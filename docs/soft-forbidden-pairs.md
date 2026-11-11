@@ -42,3 +42,6 @@ exactly as before.
 
 `dutch_scs_order`, `dutch_scs_colour`, `team_scs_order` and `team_scs_colour`: the soft pairs
 change which equally good pairing is chosen, and colour preferences still outrank them.
+
+`team_scs_28_teams` and `team_scs_bracket_width`: the soft field makes the team edge weight
+wider, and the weight bound must keep room for the matching at every width.

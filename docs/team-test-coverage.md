@@ -53,6 +53,7 @@ multi-board teams for aggregation.
 | no-colour mode (192 `FIDE_TEAM_MP`) | team_col_lowercd |
 | aggregation (boards → match / game points) | team_agg_gamepoints, team_round2 |
 | checker (`-c`) re-pairs each round on the primary score | team_checker_gamepoints |
+| edge-weight bound wide enough for the matching, with and without SCS records | team_44_bracket_width, team_scs_bracket_width, team_scs_28_teams |
 
 ## Exercised but not isolated
 

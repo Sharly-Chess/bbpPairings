@@ -447,9 +447,17 @@ namespace swisssystems
 
         if (max)
         {
-          // Leave two bits of headroom for the matching subroutine.
-          result.shiftGrow(2u);
-          result >>= 1u;
+          // The bound is twice the value built above, less one. No real weight
+          // exceeds it: the count fields of that value are all 1, and the
+          // identifier fields sum to less than its lowest count bit. The
+          // matching subroutine shifts the bound left by two bits, so it needs
+          // two bits of headroom above its top bit. Growing by three bits
+          // before halving twice leaves them. (dutch.cpp grows by two, which
+          // is enough there because its bound is a power of two. This one is
+          // not, and growing by two overflowed whenever the top bit fell at
+          // the end of a 64-bit word.)
+          result.shiftGrow(3u);
+          result >>= 2u;
           result -= 1u;
         }
         return result;
