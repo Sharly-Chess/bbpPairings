@@ -54,6 +54,8 @@ multi-board teams for aggregation.
 | aggregation (boards → match / game points) | team_agg_gamepoints, team_round2 |
 | checker (`-c`) re-pairs each round on the primary score | team_checker_gamepoints |
 | record 300: board 1 of a past round, whatever the order of the 310 roster | team_300_lineup |
+| record 300 with board 1 vacant: colour from the first occupied board and 352 | team_300_vacant_board1 |
+| 310 default order with a hole: board 1 is the first registered player who played | team_310_hole |
 | edge-weight bound wide enough for the matching, with and without SCS records | team_44_bracket_width, team_scs_bracket_width, team_scs_28_teams |
 
 ## Exercised but not isolated

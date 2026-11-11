@@ -53,14 +53,23 @@ namespace fileformats
       };
 
       // A TRF-2026 record 300: one team's lineup of a past round, in board
-      // order. Only board 1 is kept: it gives the team's colour and the type
-      // of its result that round, and the 310 roster need not start with it,
-      // since a producer may write the 310 in the order of the round to pair.
+      // order, given when the team did not follow the default order of its 310
+      // roster or left a board vacant. Only the first occupied board is kept:
+      // it gives the team's colour that round. (Sharly Chess writes one for
+      // every match, and writes the 310 in the order of the round to pair.)
       struct TeamLineup
       {
         tournament::round_index round;  // zero-based
         tournament::player_index team;  // team pairing number minus one
-        tournament::player_index board1; // member index, or none when vacant
+        std::size_t board;              // zero-based, first occupied board
+        tournament::player_index player; // member index on that board
+      };
+
+      // A member who stands for a team in a round, and the board they sat on.
+      struct BoardMember
+      {
+        tournament::player_index player;
+        std::size_t board;              // zero-based
       };
 
       // A TRF-2026 record 250 team acceleration: fictitious match/game points
@@ -215,6 +224,7 @@ namespace fileformats
       std::vector<TeamBye> teamByes;
       std::vector<TeamAccel> teamAccels;
       std::vector<TeamLineup> lineups;
+      std::string boardColours;
       swisssystems::TeamConfig config;
       bool sawTeamCode = false;
       tournament::points pointsForTeamWin = 20u;  // 362 defaults: 2.0 / 1.0 / 0.0
@@ -419,23 +429,36 @@ namespace fileformats
           // order at 17-20, 22-25, ... ("0000" for a vacant board).
           const std::string roundStr = trim(field(cline, 5u, 3u));
           const std::string teamStr = trim(field(cline, 9u, 3u));
-          const std::string board1Str = trim(field(cline, 17u, 4u));
-          if (!roundStr.empty() && !teamStr.empty())
+          if (roundStr.empty() || teamStr.empty())
           {
-            const unsigned long board1Id =
-              board1Str.empty() ? 0u : std::stoul(board1Str);
-            lineups.push_back(
-              { static_cast<tournament::round_index>(std::stoul(roundStr) - 1u),
-                static_cast<tournament::player_index>(std::stoul(teamStr) - 1u),
-                static_cast<tournament::player_index>(
-                  board1Id ? board1Id - 1u : ~0ul) });
+            continue;
+          }
+          std::size_t board = 0u;
+          for (std::size_t col = 17u; col - 1u < cline.size(); col += 5u)
+          {
+            const std::string idStr = trim(field(cline, col, 4u));
+            const unsigned long id = idStr.empty() ? 0u : std::stoul(idStr);
+            if (id)
+            {
+              lineups.push_back(
+                { static_cast<tournament::round_index>(
+                    std::stoul(roundStr) - 1u),
+                  static_cast<tournament::player_index>(
+                    std::stoul(teamStr) - 1u),
+                  board,
+                  static_cast<tournament::player_index>(id - 1u) });
+              break;
+            }
+            ++board;
           }
           continue;
         }
 
         if (code == "352")
         {
-          continue; // 352 board colours are implicit from the rosters
+          // The colour of each board for the team that has White, from 5 on.
+          boardColours = trim(cline.size() > 4u ? cline.substr(4u) : "");
+          continue;
         }
 
         kept << line << '\n';
@@ -489,31 +512,34 @@ namespace fileformats
 
       const tournament::round_index rounds = member.playedRounds;
 
-      // Board 1 of each team in each past round. A 300 record names it. A
-      // round without one (a bye, or a file that has no 300 records) falls
-      // back to the first roster member who took part in the pairing of that
-      // round, and then to the first roster member.
+      // The member who stands for each team in each past round: the player
+      // on its first occupied board. A 300 record names them when the team
+      // left the default order of its 310 roster or a board vacant. Otherwise
+      // the team followed that order, holes allowed, so board 1 is the first
+      // roster member who took part in the pairing of the round (a bye round
+      // has no 300 record either), and failing that the first roster member.
       std::map<
           std::pair<tournament::player_index, tournament::round_index>,
-          tournament::player_index>
-        lineupBoard1;
+          BoardMember>
+        lineupFirstBoard;
       for (const TeamLineup &lineup : lineups)
       {
         const auto team = teamOfTpnIndex.find(lineup.team);
         if (team != teamOfTpnIndex.end()
-              && lineup.board1 < memberToTeam.size()
-              && memberToTeam[lineup.board1] == team->second)
+              && lineup.player < memberToTeam.size()
+              && memberToTeam[lineup.player] == team->second)
         {
-          lineupBoard1[{ team->second, lineup.round }] = lineup.board1;
+          lineupFirstBoard[{ team->second, lineup.round }] =
+            { lineup.player, lineup.board };
         }
       }
-      const auto board1Member =
-        [&lineupBoard1, &rosters, &member](
+      const auto firstBoardMember =
+        [&lineupFirstBoard, &rosters, &member](
           const tournament::player_index t,
-          const tournament::round_index r) -> tournament::player_index
+          const tournament::round_index r) -> BoardMember
         {
-          const auto stated = lineupBoard1.find({ t, r });
-          if (stated != lineupBoard1.end())
+          const auto stated = lineupFirstBoard.find({ t, r });
+          if (stated != lineupFirstBoard.end())
           {
             return stated->second;
           }
@@ -525,14 +551,25 @@ namespace fileformats
                   && r < member.players[m].matches.size()
                   && member.players[m].matches[r].participatedInPairing)
             {
-              return m;
+              return { m, 0u };
             }
           }
           if (members.empty())
           {
-            return ~tournament::player_index{ };
+            return { tournament::player_index(~tournament::player_index{ }), 0u };
           }
-          return members[0];
+          return { members[0], 0u };
+        };
+      // Whether board `board` has the other colour from board 1 (record 352,
+      // or alternating colours when the file has none).
+      const auto boardSwapsColour =
+        [&boardColours](const std::size_t board)
+        {
+          if (board < boardColours.size())
+          {
+            return boardColours[board] != boardColours[0];
+          }
+          return (board & 1u) != 0u;
         };
 
       // Pass 2a: per team, per round, the board-1 record and the game points.
@@ -645,11 +682,10 @@ namespace fileformats
           }
           gamePoints[t][r] = gp;
 
-          const tournament::player_index board1 =
-            board1Member(t, r);
-          if (board1 < member.players.size())
+          const BoardMember first = firstBoardMember(t, r);
+          if (first.player < member.players.size())
           {
-            const tournament::Player &b1 = member.players[board1];
+            const tournament::Player &b1 = member.players[first.player];
             if (r < b1.matches.size())
             {
               const tournament::Match &m0 = b1.matches[r];
@@ -661,7 +697,14 @@ namespace fileformats
               board1Score[t][r] = m0.matchScore;
               // The colour board 1 was *scheduled* to play, which §1.6.1 counts
               // for the team whether or not that board's own game went ahead.
-              board1Colour[t][r] = m0.color;
+              // A vacant board 1 leaves it to the first occupied board, whose
+              // colour is board 1's or the other one by record 352.
+              board1Colour[t][r] =
+                boardSwapsColour(first.board) && m0.color != tournament::COLOR_NONE
+                  ? (m0.color == tournament::COLOR_WHITE
+                      ? tournament::COLOR_BLACK
+                      : tournament::COLOR_WHITE)
+                  : m0.color;
             }
           }
         }

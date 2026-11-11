@@ -168,16 +168,16 @@ Key structural differences from C.04.3 (Dutch, individuals):
 | `310` (new) / `013` (legacy) | team roster: TPN, name, nickname, board members (StartingRank ids) |
 | `192` | team config — see §7 |
 | `162` | game-point system (individual games = team game points) |
-| `352` | board colour sequence + implicit board count |
+| `352` | board colour sequence + implicit board count (read for a vacant board 1 in a `300` record) |
 | `362` | match-point values TW/TD/TL — default **2.0 / 1.0 / 0.0**, overridable |
 | `320` | team PAB match/game points + which team got the PAB each round |
 | `299` | abnormal team assignment points — **deferred** (rare) |
-| `300` | a team's lineup of a past round in board order: names board 1 for that round (the `310` roster may be in the order of the round to pair) |
+| `300` | a team's lineup of a past round in board order, given when the team left the default `310` order or a board vacant: its first occupied board gives the team's colour that round (with `352` when board 1 is vacant) |
 | `320`(game)/`801`/`802` | not parsed (alternatives to `001`) |
 
 **Aggregation (member tournament → team tournament), per round per team:**
 1. game points = Σ member board results (1/=/0, W/D/L unrated, forfeits ±).
-2. team colour = board-1 player's scheduled colour (only if the match was played; §1.6.1). Board 1 is the first player of that round's `300` record; without one, the first roster member who took part in the round's pairing, then the first roster member.
+2. team colour = board-1 player's scheduled colour (only if the match was played; §1.6.1). Board 1 is the first player of that round's `300` record, or its first occupied board with the colour turned by `352`. Without a `300` record the team followed the default order of its `310` roster, holes allowed, so board 1 is the first roster member who took part in the round's pairing (then the first roster member).
 3. opponent team = team of any member's individual opponent.
 4. match points = compare team GP vs opponent GP → W/D/L → TW/TD/TL (§362).
 5. record opponent (forbidden pair), colour history, both scores; mark PAB/forfeit/bye for `[C2]`.
