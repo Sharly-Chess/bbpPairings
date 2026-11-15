@@ -738,6 +738,40 @@ namespace fileformats
       const std::vector<tournament::AbnormalAssignment> &abnormals =
         member.abnormalAssignments;
 
+      // Whether a blank-type 299 record (free penalty/bonus points) applies to
+      // the team with this TPN index in round r.
+      const auto blankAssignmentApplies =
+        [](
+          const tournament::AbnormalAssignment &a,
+          const tournament::player_index tpnIndex,
+          const tournament::round_index r)
+        {
+          return a.type == U' '
+            && (a.allRounds || a.round == r)
+            && (a.targets.empty()
+                  || std::find(a.targets.begin(), a.targets.end(), tpnIndex)
+                       != a.targets.end());
+        };
+
+      // The game points blank-type 299 records give the team with this TPN
+      // index in round r. They count towards the team's score in the match, so
+      // a penalty can change who won it.
+      const auto blankGamePoints =
+        [&abnormals, &blankAssignmentApplies](
+          const tournament::player_index tpnIndex,
+          const tournament::round_index r)
+        {
+          long total = 0;
+          for (const tournament::AbnormalAssignment &a : abnormals)
+          {
+            if (a.hasOtherPoints && blankAssignmentApplies(a, tpnIndex, r))
+            {
+              total += a.otherPoints;
+            }
+          }
+          return total;
+        };
+
       for (tournament::player_index t = 0; t < teamCount; ++t)
       {
         // The team's identifier for 299 targeting is its TPN minus one.
@@ -921,17 +955,23 @@ namespace fileformats
           }
           else
           {
-            // The match result is the game-point comparison. Boards forfeited
-            // each way still score as boards, so a match nobody played over
-            // the board can still be drawn or lost on them.
-            const long gpO = static_cast<long>(gamePoints[opp][r]);
-            if (rawGp > gpO)
+            // The match result is the game-point comparison, with each team's
+            // blank-type 299 game points for the round counted in. Boards
+            // forfeited each way still score as boards, so a match nobody
+            // played over the board can still be drawn or lost on them.
+            const long scored = rawGp + blankGamePoints(teamTpnIndex, r);
+            const long scoredO =
+              static_cast<long>(gamePoints[opp][r])
+                + blankGamePoints(
+                    static_cast<tournament::player_index>(rosters[opp].tpn - 1u),
+                    r);
+            if (scored > scoredO)
             {
               type = U'W';
               matchScore = tournament::MATCH_SCORE_WIN;
               defaultMp = static_cast<long>(pointsForTeamWin);
             }
-            else if (rawGp < gpO || rawGp <= 0)
+            else if (scored < scoredO || scored <= 0)
             {
               // A draw needs a point on each side: a match neither team
               // scored in is lost by both.
@@ -991,19 +1031,7 @@ namespace fileformats
           // Apply blank-type 299 records as additive penalties/bonuses.
           for (const tournament::AbnormalAssignment &a : abnormals)
           {
-            if (a.type != U' ')
-            {
-              continue;
-            }
-            if (!a.allRounds && a.round != r)
-            {
-              continue;
-            }
-            const bool targeted =
-              a.targets.empty()
-                || std::find(a.targets.begin(), a.targets.end(), teamTpnIndex)
-                     != a.targets.end();
-            if (!targeted)
+            if (!blankAssignmentApplies(a, teamTpnIndex, r))
             {
               continue;
             }
